@@ -4,9 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Edit3, Upload, Camera } from "lucide-react";
@@ -29,9 +27,6 @@ const ProfileEditDialog = ({ trigger, profile, onProfileUpdate }: ProfileEditDia
     location: '',
     avatar_url: ''
   });
-  const [careGroups, setCareGroups] = useState<any[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<string>('');
-  const [newGroupName, setNewGroupName] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const { toast } = useToast();
@@ -51,44 +46,9 @@ const ProfileEditDialog = ({ trigger, profile, onProfileUpdate }: ProfileEditDia
     }
   }, [profile]);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchCareGroups();
-      fetchUserGroup();
-    }
-  }, [isOpen]);
 
-  const fetchCareGroups = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('care_groups')
-        .select('id, name')
-        .order('name');
-      
-      if (error) throw error;
-      setCareGroups(data || []);
-    } catch (error) {
-      console.error('Error fetching care groups:', error);
-    }
-  };
 
-  const fetchUserGroup = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
-      const { data, error } = await supabase
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') throw error;
-      setSelectedGroup(data?.group_id || '');
-    } catch (error) {
-      console.error('Error fetching user group:', error);
-    }
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -126,61 +86,7 @@ const ProfileEditDialog = ({ trigger, profile, onProfileUpdate }: ProfileEditDia
     }
   };
 
-  const handleGroupAction = async (userId: string) => {
-    try {
-      if (newGroupName.trim()) {
-        // Create new group
-        const { data: newGroup, error: createError } = await supabase
-          .from('care_groups')
-          .insert({
-            name: newGroupName.trim(),
-            leader_id: userId
-          })
-          .select()
-          .single();
 
-        if (createError) throw createError;
-
-        // Join the new group
-        await supabase
-          .from('group_members')
-          .insert({
-            user_id: userId,
-            group_id: newGroup.id,
-            role: 'leader'
-          });
-
-        toast({
-          title: "สร้างกลุ่มสำเร็จ",
-          description: `สร้างกลุ่ม "${newGroupName}" และเข้าร่วมเป็นหัวหน้ากลุ่มแล้ว`,
-        });
-      } else if (selectedGroup) {
-        // Leave current group first
-        await supabase
-          .from('group_members')
-          .delete()
-          .eq('user_id', userId);
-
-        // Join selected group
-        await supabase
-          .from('group_members')
-          .insert({
-            user_id: userId,
-            group_id: selectedGroup,
-            role: 'member'
-          });
-
-        const groupName = careGroups.find(g => g.id === selectedGroup)?.name;
-        toast({
-          title: "เข้าร่วมกลุ่มสำเร็จ",
-          description: `เข้าร่วมกลุ่ม "${groupName}" แล้ว`,
-        });
-      }
-    } catch (error) {
-      console.error('Error handling group action:', error);
-      throw error;
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,44 +99,25 @@ const ProfileEditDialog = ({ trigger, profile, onProfileUpdate }: ProfileEditDia
       // Upload avatar if changed
       const avatarUrl = await uploadAvatar(user.id);
 
-      // First, check if profile exists
-      const { data: existingProfile, error: checkError } = await supabase
+      // Update profile
+      const { error: profileError } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('id', user.id)
-        .single();
+        .update({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          display_name: formData.display_name,
+          bio: formData.bio,
+          phone: formData.phone,
+          location: formData.location,
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
 
-      if (checkError && checkError.code === 'PGRST116') {
-        // Profile doesn't exist, create it
-        const { error: createError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            ...formData,
-            avatar_url: avatarUrl,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-
-        if (createError) throw createError;
-      } else if (checkError) {
-        throw checkError;
-      } else {
-        // Profile exists, update it
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            ...formData,
-            avatar_url: avatarUrl,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id);
-
-        if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        throw profileError;
       }
-
-      // Handle group membership
-      await handleGroupAction(user.id);
 
       toast({
         title: "อัพเดทโปรไฟล์สำเร็จ",
@@ -347,40 +234,7 @@ const ProfileEditDialog = ({ trigger, profile, onProfileUpdate }: ProfileEditDia
             </div>
           </div>
 
-          {/* Group Management */}
-          <Card>
-            <CardContent className="p-4 space-y-4">
-              <h4 className="font-medium">การจัดการกลุ่มดูแล</h4>
-              
-              <div>
-                <Label htmlFor="existing-group">เลือกกลุ่มที่มีอยู่</Label>
-                <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกกลุ่มที่ต้องการเข้าร่วม" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {careGroups.map(group => (
-                      <SelectItem key={group.id} value={group.id}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="text-center text-muted-foreground">หรือ</div>
-
-              <div>
-                <Label htmlFor="new-group">สร้างกลุ่มใหม่</Label>
-                <Input
-                  id="new-group"
-                  placeholder="ชื่อกลุ่มใหม่"
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
 
           <div className="flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
