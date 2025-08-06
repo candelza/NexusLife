@@ -13,6 +13,7 @@ import PrayerDetail from "./pages/PrayerDetail";
 import AdminSettings from "./pages/AdminSettings";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
+import EditProfile from "./pages/EditProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/new-prayer" element={<NewPrayer />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/groups" element={<MemberManagement />} />

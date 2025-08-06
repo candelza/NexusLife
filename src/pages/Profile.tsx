@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from '@supabase/supabase-js';
 import { useToast } from "@/hooks/use-toast";
-import ProfileEditDialog from "@/components/ProfileEditDialog";
+
 import PrayerCard from "@/components/PrayerCard";
 import { 
   Heart, 
@@ -223,18 +223,15 @@ const Profile = () => {
                     </div>
                   </div>
                   
-                  <ProfileEditDialog
-                    trigger={
-                      <Button variant="secondary" size="sm" className="bg-white/20 text-primary-foreground hover:bg-white/30 border-white/30">
-                        <Edit3 className="w-4 h-4" />
-                        แก้ไขโปรไฟล์
-                      </Button>
-                    }
-                    profile={profile}
-                    onProfileUpdate={() => {
-                      if (user) fetchProfile(user.id);
-                    }}
-                  />
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="bg-white/20 text-primary-foreground hover:bg-white/30 border-white/30"
+                    onClick={() => navigate('/profile/edit')}
+                  >
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    แก้ไขโปรไฟล์
+                  </Button>
                 </div>
               </div>
             </div>
