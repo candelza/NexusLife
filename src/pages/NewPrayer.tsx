@@ -52,7 +52,6 @@ const categories = [
   "อื่นๆ"
 ];
 
-
 const NewPrayer = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -131,6 +130,38 @@ const NewPrayer = () => {
     setIsSubmitting(true);
     
     try {
+      // First, ensure the user has a profile
+      let { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError && profileError.code === 'PGRST116') {
+        // Create profile if it doesn't exist
+        const { data: newProfile, error: createProfileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            display_name: user.email?.split('@')[0] || 'User',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (createProfileError) {
+          console.error('Error creating profile:', createProfileError);
+          throw new Error('ไม่สามารถสร้างโปรไฟล์ได้');
+        }
+        
+        profile = newProfile;
+      } else if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        throw profileError;
+      }
+
+      // Now insert the prayer
       const { error } = await supabase
         .from('prayers')
         .insert({
@@ -141,10 +172,14 @@ const NewPrayer = () => {
           care_group_id: formData.careGroup || null,
           is_urgent: formData.isUrgent,
           is_private: formData.isPrivate,
-          is_anonymous: formData.isAnonymous
+          is_anonymous: formData.isAnonymous,
+          status: 'active'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error inserting prayer:', error);
+        throw error;
+      }
 
       toast({
         title: "ส่งคำอธิษฐานสำเร็จ",
@@ -153,9 +188,10 @@ const NewPrayer = () => {
       
       navigate("/");
     } catch (error: any) {
+      console.error('Error submitting prayer:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: error.message || "ไม่สามารถส่งคำอธิษฐานได้",
+        description: error.message || "ไม่สามารถส่งคำอธิษฐานได้ กรุณาลองใหม่อีกครั้ง",
         variant: "destructive"
       });
     } finally {
@@ -203,6 +239,7 @@ const NewPrayer = () => {
                     value={formData.title}
                     onChange={(e) => updateFormData("title", e.target.value)}
                     className="bg-background/50 border-border/50 text-base"
+                    maxLength={100}
                   />
                 </div>
 
@@ -217,6 +254,7 @@ const NewPrayer = () => {
                     value={formData.description}
                     onChange={(e) => updateFormData("description", e.target.value)}
                     className="bg-background/50 border-border/50 min-h-32 text-base"
+                    maxLength={500}
                   />
                   <p className="text-sm text-muted-foreground">
                     {formData.description.length}/500 characters
@@ -367,6 +405,7 @@ const NewPrayer = () => {
                     variant="outline"
                     className="flex-1"
                     onClick={() => navigate(-1)}
+                    disabled={isSubmitting}
                   >
                     ยกเลิก
                   </Button>
@@ -379,7 +418,7 @@ const NewPrayer = () => {
                     {isSubmitting ? (
                       <>
                         <Clock className="w-4 h-4 animate-spin" />
-                        Submitting...
+                        กำลังส่ง...
                       </>
                     ) : (
                       <>

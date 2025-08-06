@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from '@supabase/supabase-js';
 import { 
   Users, 
   UserPlus, 
@@ -22,60 +24,35 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  Send
+  Send,
+  AlertTriangle
 } from "lucide-react";
 
-// Sample member data
-const members = [
-  {
-    id: 1,
-    name: "สุรศักดิ์ เจริญสุข",
-    email: "surasakc@email.com",
-    phone: "+66 81 234 5678",
-    role: "Co-Leader",
-    status: "active",
-    joinDate: "ม.ค. 2023",
-    avatar: "/api/placeholder/40/40",
-    attendance: 95,
-    prayersShared: 23
-  },
-  {
-    id: 2,
-    name: "อรุณี ใจดี",
-    email: "arunee.jaideee@email.com",
-    phone: "+66 87 987 6543",
-    role: "Member",
-    status: "active",
-    joinDate: "มี.ค. 2023",
-    avatar: "/api/placeholder/40/40",
-    attendance: 87,
-    prayersShared: 15
-  },
-  {
-    id: 3,
-    name: "ประหยัด คิดเก่ง",
-    email: "prayad.kidkeng@email.com",
-    phone: "+66 82 456 7890",
-    role: "Member",
-    status: "active",
-    joinDate: "ก.พ. 2023",
-    avatar: "/api/placeholder/40/40",
-    attendance: 92,
-    prayersShared: 31
-  },
-  {
-    id: 4,
-    name: "สมฤทัย โชคดี",
-    email: "somrutai.chokdee@email.com",
-    phone: "+66 89 321 0987",
-    role: "Member",
-    status: "pending",
-    joinDate: "ธ.ค. 2024",
-    avatar: "/api/placeholder/40/40",
-    attendance: 0,
-    prayersShared: 0
-  }
-];
+interface Member {
+  id: string;
+  user_id: string;
+  group_id: string;
+  role: string | null;
+  joined_at: string;
+  profile: {
+    id: string;
+    display_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+    created_at: string;
+  };
+  care_group: {
+    id: string;
+    name: string;
+  };
+}
+
+interface CareGroup {
+  id: string;
+  name: string;
+  description: string | null;
+}
 
 const roleOptions = [
   { value: "leader", label: "หัวหน้า", icon: Crown },
@@ -89,15 +66,89 @@ const MemberManagement = () => {
   const [selectedRole, setSelectedRole] = useState("all");
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [members, setMembers] = useState<Member[]>([]);
+  const [careGroups, setCareGroups] = useState<CareGroup[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  // Fetch members from database
+  const fetchMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('group_members')
+        .select(`
+          id,
+          user_id,
+          group_id,
+          role,
+          joined_at,
+          profile:profiles!group_members_user_id_fkey(
+            id,
+            display_name,
+            first_name,
+            last_name,
+            avatar_url,
+            created_at
+          ),
+          care_group:care_groups!group_members_group_id_fkey(
+            id,
+            name
+          )
+        `)
+        .order('joined_at', { ascending: false });
+
+      if (error) throw error;
+      setMembers(data || []);
+    } catch (error) {
+      console.error('Error fetching members:', error);
+    }
+  };
+
+  // Fetch care groups
+  const fetchCareGroups = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('care_groups')
+        .select('id, name, description')
+        .order('name');
+
+      if (error) throw error;
+      setCareGroups(data || []);
+    } catch (error) {
+      console.error('Error fetching care groups:', error);
+    }
+  };
+
+  // Auth state management
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    fetchMembers();
+    fetchCareGroups();
+    setIsLoading(false);
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const filteredMembers = members.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = selectedRole === "all" || member.role.toLowerCase().includes(selectedRole);
+    const memberName = member.profile.display_name || 
+                      `${member.profile.first_name || ''} ${member.profile.last_name || ''}`.trim() ||
+                      'Unknown User';
+    const matchesSearch = memberName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = selectedRole === "all" || member.role === selectedRole;
     return matchesSearch && matchesRole;
   });
 
-  const handleInviteMember = () => {
+  const handleInviteMember = async () => {
     if (!inviteEmail.trim()) {
       toast({
         title: "จำเป็นต้องมีอีเมล",
@@ -107,6 +158,8 @@ const MemberManagement = () => {
       return;
     }
 
+    // In a real app, you would send an invitation email here
+    // For now, we'll just show a success message
     toast({
       title: "ส่งคำเชิญแล้ว",
       description: `ส่งคำเชิญเข้าร่วมกลุ่มดูแลไปยัง ${inviteEmail} แล้ว`,
@@ -115,20 +168,74 @@ const MemberManagement = () => {
     setIsInviteOpen(false);
   };
 
-  const handleRoleChange = (memberId: number, newRole: string) => {
-    toast({
-      title: "อัปเดตบทบาทแล้ว",
-      description: `บทบาทของสมาชิกถูกอัปเดตเป็น ${newRole} แล้ว`,
-    });
+  const handleRoleChange = async (memberId: string, newRole: string) => {
+    try {
+      const { error } = await supabase
+        .from('group_members')
+        .update({ role: newRole })
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: "อัปเดตบทบาทแล้ว",
+        description: `บทบาทของสมาชิกถูกอัปเดตเป็น ${roleOptions.find(r => r.value === newRole)?.label} แล้ว`,
+      });
+
+      // Refresh members
+      fetchMembers();
+    } catch (error: any) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถอัปเดตบทบาทได้",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleRemoveMember = (memberId: number, memberName: string) => {
-    toast({
-      title: "นำสมาชิกออกแล้ว",
-      description: `${memberName} ถูกนำออกจากกลุ่มดูแลแล้ว`,
-      variant: "destructive"
-    });
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    if (!confirm(`คุณแน่ใจหรือไม่ที่จะนำ ${memberName} ออกจากกลุ่มดูแล?`)) {
+      return;
+    }
+
+    setIsDeleting(memberId);
+    
+    try {
+      const { error } = await supabase
+        .from('group_members')
+        .delete()
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: "นำสมาชิกออกแล้ว",
+        description: `${memberName} ถูกนำออกจากกลุ่มดูแลแล้ว`,
+        variant: "destructive"
+      });
+
+      // Refresh members
+      fetchMembers();
+    } catch (error: any) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถนำสมาชิกออกได้",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(null);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-pulse">กำลังโหลด...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -189,16 +296,16 @@ const MemberManagement = () => {
           <Card className="bg-card/60 backdrop-blur-sm border-border/50">
             <CardContent className="p-4 text-center">
               <Shield className="w-6 h-6 text-green-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{members.filter(m => m.status === 'active').length}</div>
-              <div className="text-sm text-muted-foreground">สมาชิกที่ใช้งาน</div>
+              <div className="text-2xl font-bold">{members.filter(m => m.role === 'leader' || m.role === 'co-leader').length}</div>
+              <div className="text-sm text-muted-foreground">ผู้นำ</div>
             </CardContent>
           </Card>
           
           <Card className="bg-card/60 backdrop-blur-sm border-border/50">
             <CardContent className="p-4 text-center">
               <Crown className="w-6 h-6 text-purple-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{members.filter(m => m.role.includes('Leader')).length}</div>
-              <div className="text-sm text-muted-foreground">ผู้นำ</div>
+              <div className="text-2xl font-bold">{careGroups.length}</div>
+              <div className="text-sm text-muted-foreground">กลุ่มดูแล</div>
             </CardContent>
           </Card>
           
@@ -206,9 +313,9 @@ const MemberManagement = () => {
             <CardContent className="p-4 text-center">
               <Calendar className="w-6 h-6 text-orange-500 mx-auto mb-2" />
               <div className="text-2xl font-bold">
-                {Math.round(members.reduce((acc, m) => acc + m.attendance, 0) / members.length)}%
+                {members.length > 0 ? Math.round(members.length / careGroups.length) : 0}
               </div>
-              <div className="text-sm text-muted-foreground">การเข้าร่วมเฉลี่ย</div>
+              <div className="text-sm text-muted-foreground">สมาชิกเฉลี่ยต่อกลุ่ม</div>
             </CardContent>
           </Card>
         </div>
@@ -233,6 +340,7 @@ const MemberManagement = () => {
                 <SelectContent>
                   <SelectItem value="all">บทบาททั้งหมด</SelectItem>
                   <SelectItem value="leader">ผู้นำ</SelectItem>
+                  <SelectItem value="co-leader">รองผู้นำ</SelectItem>
                   <SelectItem value="member">สมาชิก</SelectItem>
                 </SelectContent>
               </Select>
@@ -250,94 +358,94 @@ const MemberManagement = () => {
           </CardHeader>
           
           <CardContent className="p-0">
-            <div className="space-y-0">
-              {filteredMembers.map((member, index) => (
-                <div key={member.id}>
-                  <div className="p-6 hover:bg-accent/30 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src={member.avatar} alt={member.name} />
-                          <AvatarFallback>
-                            {member.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold">{member.name}</h3>
-                             <Badge 
-                               variant={member.status === 'active' ? 'default' : 'secondary'}
-                               className={member.status === 'pending' ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
-                             >
-                               {member.status === 'active' ? 'ใช้งาน' : 'รอการอนุมัติ'}
-                            </Badge>
+            {filteredMembers.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>ไม่พบสมาชิกที่ตรงกับเงื่อนไขการค้นหา</p>
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {filteredMembers.map((member, index) => {
+                  const memberName = member.profile.display_name || 
+                                   `${member.profile.first_name || ''} ${member.profile.last_name || ''}`.trim() ||
+                                   'Unknown User';
+                  const memberInitials = memberName.split(' ').map(n => n[0]).join('');
+                  
+                  return (
+                    <div key={member.id}>
+                      <div className="p-6 hover:bg-accent/30 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <Avatar className="w-12 h-12">
+                              <AvatarImage src={member.profile.avatar_url} alt={memberName} />
+                              <AvatarFallback>
+                                {memberInitials}
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold">{memberName}</h3>
+                                <Badge variant="outline" className="text-xs">
+                                  {member.care_group.name}
+                                </Badge>
+                              </div>
+                              
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  <span>เข้าร่วมเมื่อ {new Date(member.joined_at).toLocaleDateString('th-TH', {
+                                    year: 'numeric',
+                                    month: 'short'
+                                  })}</span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Mail className="w-3 h-3" />
-                              <span>{member.email}</span>
-                            </div>
-                            <span className="hidden sm:block">•</span>
-                            <div className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              <span>{member.phone}</span>
-                            </div>
-                            <span className="hidden sm:block">•</span>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              <span>เข้าร่วมเมื่อ {member.joinDate}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-4 mt-2">
-                             <span className="text-sm text-muted-foreground">
-                               การเข้าร่วม: {member.attendance}%
-                             </span>
-                             <span className="text-sm text-muted-foreground">
-                               คำอธิษฐาน: {member.prayersShared}
-                             </span>
+                          <div className="flex items-center gap-3">
+                            <Select
+                              value={member.role || 'member'}
+                              onValueChange={(value) => handleRoleChange(member.id, value)}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {roleOptions.map(role => (
+                                  <SelectItem key={role.value} value={role.value}>
+                                    <div className="flex items-center gap-2">
+                                      <role.icon className="w-3 h-3" />
+                                      {role.label}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveMember(member.id, memberName)}
+                              disabled={isDeleting === member.id}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              {isDeleting === member.id ? (
+                                <div className="w-4 h-4 animate-spin rounded-full border-2 border-destructive border-t-transparent" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </Button>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3">
-                        <Select
-                          value={member.role.toLowerCase().replace(' ', '-')}
-                          onValueChange={(value) => handleRoleChange(member.id, value)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roleOptions.map(role => (
-                              <SelectItem key={role.value} value={role.value}>
-                                <div className="flex items-center gap-2">
-                                  <role.icon className="w-3 h-3" />
-                                  {role.label}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveMember(member.id, member.name)}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      {index < filteredMembers.length - 1 && <Separator />}
                     </div>
-                  </div>
-                  
-                  {index < filteredMembers.length - 1 && <Separator />}
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

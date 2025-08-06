@@ -193,16 +193,41 @@ const ProfileEditDialog = ({ trigger, profile, onProfileUpdate }: ProfileEditDia
       // Upload avatar if changed
       const avatarUrl = await uploadAvatar(user.id);
 
-      // Update profile
-      const { error: profileError } = await supabase
+      // First, check if profile exists
+      const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
-        .update({
-          ...formData,
-          avatar_url: avatarUrl
-        })
-        .eq('id', user.id);
+        .select('id')
+        .eq('id', user.id)
+        .single();
 
-      if (profileError) throw profileError;
+      if (checkError && checkError.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        const { error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            ...formData,
+            avatar_url: avatarUrl,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (createError) throw createError;
+      } else if (checkError) {
+        throw checkError;
+      } else {
+        // Profile exists, update it
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            ...formData,
+            avatar_url: avatarUrl,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+
+        if (profileError) throw profileError;
+      }
 
       // Handle group membership
       await handleGroupAction(user.id);
@@ -218,7 +243,7 @@ const ProfileEditDialog = ({ trigger, profile, onProfileUpdate }: ProfileEditDia
       console.error('Error updating profile:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถอัพเดทโปรไฟล์ได้",
+        description: error.message || "ไม่สามารถอัพเดทโปรไฟล์ได้",
         variant: "destructive",
       });
     } finally {

@@ -22,23 +22,28 @@ import heroImage from "@/assets/hero-prayer.jpg";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from '@supabase/supabase-js';
 import { useToast } from "@/hooks/use-toast";
+import PrayerCard from "@/components/PrayerCard";
 
 interface Prayer {
   id: string;
   title: string;
   description: string;
-  category: string;
+  category: string | null;
   is_urgent: boolean;
   is_private: boolean;
   is_anonymous: boolean;
+  status: string;
   created_at: string;
-  profiles?: {
-    display_name: string;
+  user_id: string;
+  profile?: {
+    display_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
   };
-  care_groups?: {
-    name: string;
-  };
-  prayer_responses?: any[];
+  likes_count?: number;
+  comments_count?: number;
+  user_liked?: boolean;
 }
 
 const quickActions = [
@@ -67,12 +72,15 @@ const Dashboard = () => {
         .from('prayers')
         .select(`
           *,
-          profiles:user_id (display_name),
-          care_groups:care_group_id (name),
-          prayer_responses (id)
+          profile:profiles!prayers_user_id_fkey(
+            display_name,
+            first_name,
+            last_name,
+            avatar_url
+          )
         `)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
 
       if (error) throw error;
       setPrayers(data || []);
@@ -123,6 +131,21 @@ const Dashboard = () => {
       fetchPrayers();
     }
   }, [user]);
+
+  const handlePrayerUpdate = () => {
+    fetchPrayers();
+  };
+
+  const filteredPrayers = prayers.filter(prayer => {
+    const searchLower = searchTerm.toLowerCase();
+    const title = prayer.title || '';
+    const description = prayer.description || '';
+    const displayName = prayer.profile?.display_name || '';
+    
+    return title.toLowerCase().includes(searchLower) ||
+           description.toLowerCase().includes(searchLower) ||
+           displayName.toLowerCase().includes(searchLower);
+  });
 
   if (isLoading) {
     return (
@@ -218,7 +241,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-serif font-semibold">คำขอการอธิษฐานล่าสุด</h2>
             <Badge variant="secondary" className="px-3 py-1">
-              {prayers.length} คำอธิษฐานที่ยังใช้งาน
+              {filteredPrayers.length} คำอธิษฐานที่ยังใช้งาน
             </Badge>
           </div>
 
@@ -226,7 +249,7 @@ const Dashboard = () => {
             <div className="text-center py-8">
               <div className="animate-pulse">กำลังโหลดคำอธิษฐาน...</div>
             </div>
-          ) : prayers.length === 0 ? (
+          ) : filteredPrayers.length === 0 ? (
             <Card className="bg-card/60 backdrop-blur-sm border-border/50">
               <CardContent className="p-8 text-center">
                 <Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -238,77 +261,15 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           ) : (
-            prayers.map((prayer) => (
-              <Card key={prayer.id} className="bg-card/60 backdrop-blur-sm border-border/50 hover:shadow-peaceful transition-all duration-300">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CardTitle className="text-lg font-serif">{prayer.title}</CardTitle>
-                        {prayer.is_urgent && (
-                          <Badge variant="destructive" className="text-xs">
-                            ด่วน
-                          </Badge>
-                        )}
-                        {prayer.is_anonymous && (
-                          <Badge variant="secondary" className="text-xs">
-                            ไม่ระบุชื่อ
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <UserIcon className="w-3 h-3" />
-                        <span>{prayer.is_anonymous ? "ไม่ระบุชื่อ" : prayer.profiles?.display_name || "ผู้ใช้"}</span>
-                        {prayer.care_groups && (
-                          <>
-                            <Separator orientation="vertical" className="h-3" />
-                            <MapPin className="w-3 h-3" />
-                            <span>{prayer.care_groups.name}</span>
-                          </>
-                        )}
-                        <Separator orientation="vertical" className="h-3" />
-                        <Clock className="w-3 h-3" />
-                        <span>{new Date(prayer.created_at).toLocaleDateString('th-TH', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}</span>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {prayer.category}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                
-                <CardContent>
-                  <p className="text-muted-foreground mb-4 leading-relaxed">
-                    {prayer.description}
-                  </p>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10">
-                        <Heart className="w-4 h-4" />
-                        <span>0</span>
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <MessageCircle className="w-4 h-4" />
-                        <span>{prayer.prayer_responses?.length || 0}</span>
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Share2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    
-                    <Button size="sm" variant="divine">
-                      <Star className="w-3 h-3" />
-                      อธิษฐาน
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            <div className="space-y-4">
+              {filteredPrayers.map((prayer) => (
+                <PrayerCard 
+                  key={prayer.id} 
+                  prayer={prayer}
+                  onPrayerUpdate={handlePrayerUpdate}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

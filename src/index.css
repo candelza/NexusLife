@@ -1,9 +1,9 @@
+/* Nexus Prayer Community - Spiritual Design System */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Nexus Prayer Community - Spiritual Design System */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -57,19 +57,12 @@
     --radius: 1rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -180,5 +173,115 @@
 
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--primary) / 0.6);
+  }
+}
+
+@layer components {
+  /* Custom Spiritual Design System */
+  .bg-gradient-divine {
+    background: linear-gradient(135deg, hsl(259, 94%, 51%), hsl(280, 100%, 70%));
+  }
+  
+  .bg-gradient-subtle {
+    background: linear-gradient(135deg, hsl(30, 54%, 90%), hsl(28, 100%, 98%));
+  }
+  
+  .bg-gradient-peaceful {
+    background: linear-gradient(135deg, hsl(25, 95%, 53%), hsl(45, 93%, 58%));
+  }
+  
+  .text-gradient-divine {
+    background: linear-gradient(135deg, hsl(259, 94%, 51%), hsl(280, 100%, 70%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .shadow-divine {
+    box-shadow: 0 10px 40px -10px hsl(259 94% 51% / 0.3);
+  }
+  
+  .shadow-peaceful {
+    box-shadow: 0 4px 20px -4px hsl(25 25% 25% / 0.1);
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 0 30px hsl(259 100% 70% / 0.4);
+  }
+  
+  .border-divine {
+    border-color: hsl(259, 94%, 51%);
+  }
+  
+  .hover\:shadow-divine:hover {
+    box-shadow: 0 10px 40px -10px hsl(259 94% 51% / 0.4);
+  }
+  
+  .hover\:bg-gradient-divine:hover {
+    background: linear-gradient(135deg, hsl(259, 94%, 45%), hsl(280, 100%, 65%));
+  }
+  
+  .bg-primary-glow {
+    background: linear-gradient(135deg, hsl(259, 94%, 51%), hsl(280, 100%, 70%));
+    box-shadow: 0 0 30px hsl(259 100% 70% / 0.5);
+  }
+  
+  /* Custom Button Variants */
+  .btn-divine {
+    @apply bg-gradient-divine text-white font-medium px-6 py-3 rounded-lg shadow-divine hover:shadow-glow transition-all duration-300;
+  }
+  
+  .btn-peaceful {
+    @apply bg-gradient-peaceful text-white font-medium px-6 py-3 rounded-lg shadow-peaceful hover:shadow-glow transition-all duration-300;
+  }
+  
+  /* Custom Card Styles */
+  .card-spiritual {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-peaceful hover:shadow-divine transition-all duration-300;
+  }
+  
+  .card-peaceful {
+    @apply bg-gradient-peaceful/50 backdrop-blur-sm border border-white/30 rounded-xl shadow-peaceful hover:shadow-divine transition-all duration-300;
+  }
+  
+  /* Custom Animation Classes */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  
+  /* Custom Typography */
+  .font-serif {
+    font-family: 'Playfair Display', serif;
+  }
+  
+  .font-sans {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  /* Custom Spacing */
+  .space-peaceful > * + * {
+    margin-top: 1.5rem;
+  }
+  
+  /* Custom Border Radius */
+  .rounded-peaceful {
+    border-radius: 1rem;
+  }
+  
+  .rounded-divine {
+    border-radius: 1.5rem;
   }
 }

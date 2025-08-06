@@ -9,6 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from '@supabase/supabase-js';
 import { useToast } from "@/hooks/use-toast";
+import ProfileEditDialog from "@/components/ProfileEditDialog";
+import PrayerCard from "@/components/PrayerCard";
 import { 
   Heart, 
   Users, 
@@ -25,60 +27,33 @@ import {
   Phone
 } from "lucide-react";
 
-// Sample user data
-const userData = {
-  name: "ซาร่าห์ จอห์นสัน",
-  email: "sarah.johnson@email.com",
-  phone: "+1 (555) 123-4567",
-  avatar: "/api/placeholder/120/120",
-  role: "หัวหน้ากลุ่มดูแล",
-  careGroup: "กลุ่มเยาวชน",
-  joinDate: "มกราคม 2566",
-  location: "ซานฟรานซิสโก, แคลิฟอร์เนีย",
-  bio: "หลงใหลในการรับใช้พระเจ้าและสร้างความสัมพันธ์ที่มีความหมายภายในชุมชนของเรา รักการนำการนมัสการและการจัดกิจกรรมเพื่อชุมชน",
-  stats: {
-    prayersShared: 47,
-    prayersAnswered: 23,
-    groupsJoined: 3,
-    eventsAttended: 15
-  }
-};
-
-const recentPrayers = [
-  {
-    id: 1,
-    title: "ขอบคุณพระคุณสำหรับงานใหม่",
-    status: "answered",
-    date: "2 วันที่แล้ว",
-    category: "ความกตัญญู"
-  },
-  {
-    id: 2,
-    title: "การรักษาสำหรับการผ่าตัดของแม่",
-    status: "ongoing",
-    date: "1 สัปดาห์ที่แล้ว",
-    category: "สุขภาพ"
-  },
-  {
-    id: 3,
-    title: "สติปัญญาในการตัดสินใจ",
-    status: "ongoing",
-    date: "2 สัปดาห์ที่แล้ว",
-    category: "การนำทาง"
-  }
-];
-
-const careGroupMembers = [
-  { name: "ไมเคิล เฉิน", role: "สมาชิก", avatar: "/api/placeholder/40/40" },
-  { name: "เจนนิเฟอร์ โลเปซ", role: "ผู้ช่วยหัวหน้า", avatar: "/api/placeholder/40/40" },
-  { name: "เดวิด คิม", role: "สมาชิก", avatar: "/api/placeholder/40/40" },
-  { name: "เอมิลี่ โรดริเกซ", role: "สมาชิก", avatar: "/api/placeholder/40/40" },
-];
+interface Prayer {
+  id: string;
+  title: string;
+  description: string;
+  category: string | null;
+  is_urgent: boolean;
+  is_private: boolean;
+  is_anonymous: boolean;
+  status: string;
+  created_at: string;
+  user_id: string;
+  profile?: {
+    display_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+  };
+  likes_count?: number;
+  comments_count?: number;
+  user_liked?: boolean;
+}
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [prayers, setPrayers] = useState<Prayer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -96,6 +71,49 @@ const Profile = () => {
       setProfile(data);
     } catch (error: any) {
       console.error('Error fetching profile:', error);
+      // Create profile if it doesn't exist
+      if (error.code === 'PGRST116') {
+        try {
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              display_name: user?.email?.split('@')[0] || 'User',
+              created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          setProfile(newProfile);
+        } catch (createError: any) {
+          console.error('Error creating profile:', createError);
+        }
+      }
+    }
+  };
+
+  // Fetch user prayers
+  const fetchPrayers = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('prayers')
+        .select(`
+          *,
+          profile:profiles!prayers_user_id_fkey(
+            display_name,
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPrayers(data || []);
+    } catch (error) {
+      console.error('Error fetching prayers:', error);
     }
   };
 
@@ -106,6 +124,7 @@ const Profile = () => {
         setUser(session?.user ?? null);
         if (session?.user) {
           fetchProfile(session.user.id);
+          fetchPrayers(session.user.id);
         } else {
           navigate("/auth");
         }
@@ -117,6 +136,7 @@ const Profile = () => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchPrayers(session.user.id);
       } else {
         navigate("/auth");
       }
@@ -125,6 +145,12 @@ const Profile = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const handlePrayerUpdate = () => {
+    if (user) {
+      fetchPrayers(user.id);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -135,6 +161,21 @@ const Profile = () => {
       </div>
     );
   }
+
+  if (!user || !profile) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-pulse">กำลังโหลดโปรไฟล์...</div>
+        </div>
+      </div>
+    );
+  }
+
+  const displayName = profile?.display_name || 
+                     `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 
+                     user?.email?.split('@')[0] || 
+                     'User';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -148,9 +189,9 @@ const Profile = () => {
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <div className="relative">
                 <Avatar className="w-24 h-24 border-4 border-white/20 shadow-glow">
-                  <AvatarImage src={profile?.avatar_url} alt={profile?.display_name || user?.email} />
+                  <AvatarImage src={profile?.avatar_url} alt={displayName} />
                   <AvatarFallback className="text-2xl bg-white/20 text-primary-foreground">
-                    {profile?.display_name ? profile.display_name.split(' ').map((n: string) => n[0]).join('') : user?.email?.[0]?.toUpperCase()}
+                    {displayName.split(' ').map((n: string) => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary-glow rounded-full flex items-center justify-center">
@@ -162,16 +203,12 @@ const Profile = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <h1 className="text-3xl font-serif font-bold mb-2">
-                      {profile?.display_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || user?.email}
+                      {displayName}
                     </h1>
                     <div className="flex flex-wrap items-center gap-3 mb-3">
                       <Badge variant="secondary" className="bg-white/20 text-primary-foreground hover:bg-white/30">
                         <Shield className="w-3 h-3 mr-1" />
-                        {userData.role}
-                      </Badge>
-                      <Badge variant="outline" className="border-white/30 text-primary-foreground">
-                        <Users className="w-3 h-3 mr-1" />
-                        {userData.careGroup}
+                        สมาชิก
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 text-primary-foreground/80">
@@ -209,7 +246,7 @@ const Profile = () => {
           <Card className="bg-card/60 backdrop-blur-sm border-border/50">
             <CardContent className="p-4 text-center">
               <Heart className="w-6 h-6 text-pink-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{userData.stats.prayersShared}</div>
+              <div className="text-2xl font-bold">{prayers.length}</div>
               <div className="text-sm text-muted-foreground">คำอธิษฐานที่แบ่งปัน</div>
             </CardContent>
           </Card>
@@ -217,7 +254,9 @@ const Profile = () => {
           <Card className="bg-card/60 backdrop-blur-sm border-border/50">
             <CardContent className="p-4 text-center">
               <Star className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{userData.stats.prayersAnswered}</div>
+              <div className="text-2xl font-bold">
+                {prayers.filter(p => p.status === 'answered').length}
+              </div>
               <div className="text-sm text-muted-foreground">คำอธิษฐานที่ได้รับการตอบ</div>
             </CardContent>
           </Card>
@@ -225,7 +264,7 @@ const Profile = () => {
           <Card className="bg-card/60 backdrop-blur-sm border-border/50">
             <CardContent className="p-4 text-center">
               <Users className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{userData.stats.groupsJoined}</div>
+              <div className="text-2xl font-bold">0</div>
               <div className="text-sm text-muted-foreground">กลุ่มที่เข้าร่วม</div>
             </CardContent>
           </Card>
@@ -233,7 +272,7 @@ const Profile = () => {
           <Card className="bg-card/60 backdrop-blur-sm border-border/50">
             <CardContent className="p-4 text-center">
               <Calendar className="w-6 h-6 text-green-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{userData.stats.eventsAttended}</div>
+              <div className="text-2xl font-bold">0</div>
               <div className="text-sm text-muted-foreground">กิจกรรมที่เข้าร่วม</div>
             </CardContent>
           </Card>
@@ -258,16 +297,20 @@ const Profile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground mb-4">{userData.bio}</p>
+                  <p className="text-muted-foreground mb-4">
+                    {profile?.bio || "ยังไม่มีข้อมูลเกี่ยวกับตัวเอง"}
+                  </p>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="w-4 h-4 text-muted-foreground" />
-                      <span>{userData.email}</span>
+                      <span>{user?.email}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="w-4 h-4 text-muted-foreground" />
-                      <span>{userData.phone}</span>
-                    </div>
+                    {profile?.phone && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span>{profile.phone}</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -283,17 +326,23 @@ const Profile = () => {
                 <CardContent className="space-y-4">
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span>ความคืบหน้าเป้าหมายรายเดือน</span>
-                      <span>23/30</span>
+                      <span>คำอธิษฐานที่ได้รับการตอบ</span>
+                      <span>{prayers.filter(p => p.status === 'answered').length}/{prayers.length}</span>
                     </div>
-                    <Progress value={76} className="h-2" />
+                    <Progress 
+                      value={prayers.length > 0 ? (prayers.filter(p => p.status === 'answered').length / prayers.length) * 100 : 0} 
+                      className="h-2" 
+                    />
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span>อัตราการตอบคำอธิษฐาน</span>
-                      <span>49%</span>
+                      <span>คำอธิษฐานเร่งด่วน</span>
+                      <span>{prayers.filter(p => p.is_urgent).length}</span>
                     </div>
-                    <Progress value={49} className="h-2" />
+                    <Progress 
+                      value={prayers.length > 0 ? (prayers.filter(p => p.is_urgent).length / prayers.length) * 100 : 0} 
+                      className="h-2" 
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -306,28 +355,29 @@ const Profile = () => {
                 <CardTitle>คำขอการอธิษฐานล่าสุด</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentPrayers.map((prayer) => (
-                    <div key={prayer.id} className="flex items-center justify-between p-4 border border-border/50 rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-medium mb-1">{prayer.title}</h4>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          <span>{prayer.date}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {prayer.category}
-                          </Badge>
-                        </div>
-                      </div>
-                      <Badge 
-                        variant={prayer.status === 'answered' ? 'default' : 'secondary'}
-                        className={prayer.status === 'answered' ? 'bg-green-500 hover:bg-green-600' : ''}
-                      >
-                        {prayer.status === 'answered' ? 'ได้รับการตอบ' : 'กำลังดำเนินการ'}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
+                {prayers.length > 0 ? (
+                  <div className="space-y-4">
+                    {prayers.map((prayer) => (
+                      <PrayerCard 
+                        key={prayer.id} 
+                        prayer={prayer}
+                        onPrayerUpdate={handlePrayerUpdate}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Heart className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p>ยังไม่มีคำอธิษฐานที่แบ่งปัน</p>
+                    <Button 
+                      variant="divine" 
+                      className="mt-4"
+                      onClick={() => navigate("/new-prayer")}
+                    >
+                      แบ่งปันคำอธิษฐานแรก
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -338,7 +388,7 @@ const Profile = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-primary" />
-                    สมาชิก{userData.careGroup}
+                    สมาชิกกลุ่มดูแล
                   </CardTitle>
                   <Button variant="divine" size="sm">
                     จัดการกลุ่ม
@@ -346,21 +396,16 @@ const Profile = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {careGroupMembers.map((member, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 border border-border/50 rounded-lg">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={member.avatar} alt={member.name} />
-                        <AvatarFallback>
-                          {member.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <h4 className="font-medium">{member.name}</h4>
-                        <p className="text-sm text-muted-foreground">{member.role}</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>ยังไม่ได้เข้าร่วมกลุ่มดูแล</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => navigate("/groups")}
+                  >
+                    เข้าร่วมกลุ่มดูแล
+                  </Button>
                 </div>
               </CardContent>
             </Card>

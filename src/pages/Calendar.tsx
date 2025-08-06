@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, addDays, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from '@supabase/supabase-js';
 import BibleVerseCard from "@/components/BibleVerseCard";
 import { cn } from "@/lib/utils";
 import { 
@@ -17,70 +26,122 @@ import {
   Plus,
   Clock,
   MapPin,
-  User
+  User as UserIcon,
+  Send
 } from "lucide-react";
 
-// Sample events data
-const events = [
-  {
-    id: 1,
-    title: "การประชุมอธิษฐานประจำสัปดาห์",
-    date: new Date(),
-    time: "19:00",
-    type: "prayer",
-    location: "ห้องประชุมใหญ่",
-    organizer: "อาจารย์สมชาย",
-    attendees: 24,
-    recurring: "รายสัปดาห์"
-  },
-  {
-    id: 2,
-    title: "กลุ่มดูแลคนหนุ่มสาว",
-    date: addDays(new Date(), 2),
-    time: "18:30",
-    type: "caregroup",
-    location: "ห้อง 203",
-    organizer: "สุวรรณา แสงทอง",
-    attendees: 12,
-    recurring: "รายสัปดาห์"
-  },
-  {
-    id: 3,
-    title: "งานเข้าถึงชุมชน",
-    date: addDays(new Date(), 5),
-    time: "09:00",
-    type: "outreach",
-    location: "สวนสาธารณะกลางเมือง",
-    organizer: "ประยุทธ์ ใจดี",
-    attendees: 18,
-    recurring: "รายเดือน"
-  },
-  {
-    id: 4,
-    title: "งานเลี้ยงสามัคคีครอบครัว",
-    date: addDays(new Date(), 7),
-    time: "18:00",
-    type: "fellowship",
-    location: "ห้องประชุม",
-    organizer: "วิมลา สุขใจ",
-    attendees: 45,
-    recurring: "รายเดือน"
-  }
-];
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  start_time: string;
+  end_time: string | null;
+  location: string | null;
+  event_type: string | null;
+  is_public: boolean | null;
+  organizer_id: string | null;
+  care_group_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CareGroup {
+  id: string;
+  name: string;
+}
 
 const eventTypeColors = {
   prayer: "bg-pink-500",
-  caregroup: "bg-blue-500",
-  outreach: "bg-green-500",
-  fellowship: "bg-purple-500"
+  worship: "bg-yellow-500",
+  study: "bg-indigo-500",
+  fellowship: "bg-purple-500",
+  service: "bg-green-500",
+  general: "bg-blue-500"
 };
+
+const eventTypes = [
+  { value: "prayer", label: "การประชุมอธิษฐาน" },
+  { value: "worship", label: "การนมัสการ" },
+  { value: "study", label: "การศึกษาพระคัมภีร์" },
+  { value: "fellowship", label: "กิจกรรมสามัคคี" },
+  { value: "service", label: "งานบริการ" },
+  { value: "general", label: "กิจกรรมทั่วไป" }
+];
 
 const Calendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewDate, setViewDate] = useState<Date>(new Date());
+  const [events, setEvents] = useState<Event[]>([]);
+  const [careGroups, setCareGroups] = useState<CareGroup[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    description: "",
+    start_time: "",
+    end_time: "",
+    location: "",
+    event_type: "",
+    is_public: true,
+    care_group_id: ""
+  });
+
+  // Fetch events from database
+  const fetchEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('start_time');
+
+      if (error) throw error;
+      setEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    }
+  };
+
+  // Fetch care groups
+  const fetchCareGroups = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('care_groups')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      setCareGroups(data || []);
+    } catch (error) {
+      console.error('Error fetching care groups:', error);
+    }
+  };
+
+  // Auth state management
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    fetchEvents();
+    fetchCareGroups();
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const getEventsForDate = (date: Date) => {
-    return events.filter(event => isSameDay(event.date, date));
+    return events.filter(event => {
+      const eventDate = new Date(event.start_time);
+      return isSameDay(eventDate, date);
+    });
   };
 
   const hasEvents = (date: Date) => {
@@ -88,6 +149,94 @@ const Calendar = () => {
   };
 
   const selectedDateEvents = getEventsForDate(selectedDate);
+
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "กรุณาเข้าสู่ระบบ",
+        description: "คุณต้องเข้าสู่ระบบก่อนสร้างกิจกรรม",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!newEvent.title.trim() || !newEvent.start_time) {
+      toast({
+        title: "ข้อมูลไม่ครบถ้วน",
+        description: "กรุณากรอกหัวข้อและเวลาของกิจกรรม",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate event type if provided
+    if (newEvent.event_type && !eventTypes.find(type => type.value === newEvent.event_type)) {
+      toast({
+        title: "ประเภทกิจกรรมไม่ถูกต้อง",
+        description: "กรุณาเลือกประเภทกิจกรรมที่ถูกต้อง",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      const eventData = {
+        title: newEvent.title.trim(),
+        description: newEvent.description.trim() || null,
+        start_time: newEvent.start_time,
+        end_time: newEvent.end_time || null,
+        location: newEvent.location.trim() || null,
+        event_type: newEvent.event_type || 'general', // Default to 'general' if not specified
+        is_public: newEvent.is_public,
+        organizer_id: user.id,
+        care_group_id: newEvent.care_group_id || null
+      };
+
+      const { error } = await supabase
+        .from('events')
+        .insert(eventData);
+
+      if (error) throw error;
+
+      toast({
+        title: "สร้างกิจกรรมสำเร็จ",
+        description: "กิจกรรมใหม่ได้ถูกสร้างแล้ว",
+      });
+      
+      // Reset form and close dialog
+      setNewEvent({
+        title: "",
+        description: "",
+        start_time: "",
+        end_time: "",
+        location: "",
+        event_type: "",
+        is_public: true,
+        care_group_id: ""
+      });
+      setIsCreateDialogOpen(false);
+      
+      // Refresh events
+      fetchEvents();
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: error.message || "ไม่สามารถสร้างกิจกรรมได้",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const updateNewEvent = (field: string, value: any) => {
+    setNewEvent(prev => ({ ...prev, [field]: value }));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -118,10 +267,142 @@ const Calendar = () => {
               </PopoverContent>
             </Popover>
             
-            <Button variant="divine" size="default">
-              <Plus className="w-4 h-4" />
-              เพิ่มกิจกรรม
-            </Button>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="divine" size="default">
+                  <Plus className="w-4 h-4" />
+                  เพิ่มกิจกรรม
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>สร้างกิจกรรมใหม่</DialogTitle>
+                </DialogHeader>
+                
+                <form onSubmit={handleCreateEvent} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">หัวข้อกิจกรรม *</Label>
+                    <Input
+                      id="title"
+                      placeholder="ชื่อกิจกรรม"
+                      value={newEvent.title}
+                      onChange={(e) => updateNewEvent("title", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">รายละเอียด</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="รายละเอียดกิจกรรม"
+                      value={newEvent.description}
+                      onChange={(e) => updateNewEvent("description", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="start_time">เวลาเริ่ม *</Label>
+                      <Input
+                        id="start_time"
+                        type="datetime-local"
+                        value={newEvent.start_time}
+                        onChange={(e) => updateNewEvent("start_time", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="end_time">เวลาสิ้นสุด</Label>
+                      <Input
+                        id="end_time"
+                        type="datetime-local"
+                        value={newEvent.end_time}
+                        onChange={(e) => updateNewEvent("end_time", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="location">สถานที่</Label>
+                    <Input
+                      id="location"
+                      placeholder="สถานที่จัดกิจกรรม"
+                      value={newEvent.location}
+                      onChange={(e) => updateNewEvent("location", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="event_type">ประเภทกิจกรรม</Label>
+                    <Select onValueChange={(value) => updateNewEvent("event_type", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือกประเภท" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {eventTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="care_group_id">กลุ่มดูแล</Label>
+                    <Select onValueChange={(value) => updateNewEvent("care_group_id", value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือกกลุ่มดูแล" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {careGroups.map((group) => (
+                          <SelectItem key={group.id} value={group.id}>
+                            {group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="is_public"
+                      checked={newEvent.is_public}
+                      onCheckedChange={(checked) => updateNewEvent("is_public", checked)}
+                    />
+                    <Label htmlFor="is_public">กิจกรรมสาธารณะ</Label>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setIsCreateDialogOpen(false)}
+                    >
+                      ยกเลิก
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="divine"
+                      className="flex-1"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Clock className="w-4 h-4 animate-spin" />
+                          สร้าง...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          สร้างกิจกรรม
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -198,7 +479,7 @@ const Calendar = () => {
                                 key={event.id}
                                 className={cn(
                                   "w-full h-1.5 rounded-full",
-                                  eventTypeColors[event.type as keyof typeof eventTypeColors]
+                                  eventTypeColors[event.event_type as keyof typeof eventTypeColors] || "bg-gray-500"
                                 )}
                               />
                             ))}
@@ -235,31 +516,34 @@ const Calendar = () => {
                         <div className="flex items-start gap-3">
                           <div className={cn(
                             "w-3 h-3 rounded-full mt-1.5",
-                            eventTypeColors[event.type as keyof typeof eventTypeColors]
+                            eventTypeColors[event.event_type as keyof typeof eventTypeColors] || "bg-gray-500"
                           )} />
                           <div className="flex-1">
                             <h4 className="font-medium mb-1">{event.title}</h4>
                             <div className="space-y-1 text-sm text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                <span>{event.time}</span>
+                                <span>{format(new Date(event.start_time), "HH:mm")}</span>
+                                {event.end_time && (
+                                  <>
+                                    <span>-</span>
+                                    <span>{format(new Date(event.end_time), "HH:mm")}</span>
+                                  </>
+                                )}
                               </div>
-                              <div className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                <span>{event.location}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                <span>{event.organizer}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Users className="w-3 h-3" />
-                                <span>{event.attendees} คนเข้าร่วม</span>
-                              </div>
+                              {event.location && (
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  <span>{event.location}</span>
+                                </div>
+                              )}
+                              {event.description && (
+                                <p className="text-sm">{event.description}</p>
+                              )}
                             </div>
                             <div className="mt-2">
                               <Badge variant="outline" className="text-xs">
-                                {event.recurring}
+                                {eventTypes.find(t => t.value === event.event_type)?.label || event.event_type}
                               </Badge>
                             </div>
                           </div>
@@ -288,7 +572,9 @@ const Calendar = () => {
                     <Heart className="w-4 h-4 text-pink-500" />
                     <span className="text-sm">การประชุมอธิษฐาน</span>
                   </div>
-                  <Badge variant="secondary">4</Badge>
+                  <Badge variant="secondary">
+                    {events.filter(e => e.event_type === 'prayer' && isSameMonth(new Date(e.start_time), viewDate)).length}
+                  </Badge>
                 </div>
                 
                 <Separator />
@@ -298,7 +584,9 @@ const Calendar = () => {
                     <Users className="w-4 h-4 text-blue-500" />
                     <span className="text-sm">กลุ่มดูแล</span>
                   </div>
-                  <Badge variant="secondary">8</Badge>
+                  <Badge variant="secondary">
+                    {events.filter(e => e.event_type === 'caregroup' && isSameMonth(new Date(e.start_time), viewDate)).length}
+                  </Badge>
                 </div>
                 
                 <Separator />
@@ -308,7 +596,9 @@ const Calendar = () => {
                     <CalendarIcon className="w-4 h-4 text-green-500" />
                     <span className="text-sm">กิจกรรมสามัคคี</span>
                   </div>
-                  <Badge variant="secondary">3</Badge>
+                  <Badge variant="secondary">
+                    {events.filter(e => e.event_type === 'fellowship' && isSameMonth(new Date(e.start_time), viewDate)).length}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>

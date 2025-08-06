@@ -9,6 +9,8 @@ import Profile from "./pages/Profile";
 import NewPrayer from "./pages/NewPrayer";
 import Calendar from "./pages/Calendar";
 import MemberManagement from "./pages/MemberManagement";
+import PrayerDetail from "./pages/PrayerDetail";
+import AdminSettings from "./pages/AdminSettings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +29,8 @@ const App = () => (
             <Route path="/new-prayer" element={<NewPrayer />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/groups" element={<MemberManagement />} />
+            <Route path="/prayer/:id" element={<PrayerDetail />} />
+            <Route path="/admin" element={<AdminSettings />} />
             <Route path="/auth" element={<Auth />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

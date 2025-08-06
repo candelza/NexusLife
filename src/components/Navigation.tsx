@@ -17,11 +17,13 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import NotificationBell from "./NotificationBell";
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -31,11 +33,17 @@ const Navigation = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
+        if (session?.user) {
+          setIsAdmin(session.user.email === 'candelaz28@gmail.com');
+        }
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        setIsAdmin(session.user.email === 'candelaz28@gmail.com');
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -55,6 +63,18 @@ const Navigation = () => {
         description: "แล้วพบกันใหม่!",
       });
       navigate("/auth");
+    }
+  };
+
+  const handleSettingsClick = () => {
+    if (isAdmin) {
+      navigate("/admin");
+    } else {
+      toast({
+        title: "ไม่มีสิทธิ์เข้าถึง",
+        description: "เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถเข้าถึงการตั้งค่าได้",
+        variant: "destructive"
+      });
     }
   };
 
@@ -114,14 +134,14 @@ const Navigation = () => {
             </Button>
           </Link>
           
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-4 h-4" />
-            <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 text-xs bg-primary">
-              3
-            </Badge>
-          </Button>
+          <NotificationBell />
           
-          <Button variant="ghost" size="icon">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleSettingsClick}
+            title={isAdmin ? "การจัดการระบบ" : "การตั้งค่า"}
+          >
             <Settings className="w-4 h-4" />
           </Button>
 
@@ -145,13 +165,24 @@ const Navigation = () => {
             </span>
           </Link>
           
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
+          <div className="flex items-center space-x-2">
+            <NotificationBell />
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={handleSettingsClick}
+              title={isAdmin ? "การจัดการระบบ" : "การตั้งค่า"}
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
+          </div>
         </div>
 
         {/* Mobile Menu */}

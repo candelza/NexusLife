@@ -1,320 +1,229 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Heart, Mail, Lock, User as UserIcon, ArrowRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import type { User, Session } from '@supabase/supabase-js';
+import { supabase } from "@/integrations/supabase/client";
+import { Heart, Shield, Users, ArrowRight } from "lucide-react";
 
 const Auth = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Auth state management
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Redirect to dashboard if user is logged in
-        if (session?.user) {
-          navigate("/");
-        }
-      }
-    );
-
-    // THEN check for existing session
+    // Check if user is already authenticated
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
+      if (session) {
         navigate("/");
       }
     });
-
-    return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
+
     try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            first_name: firstName,
-            last_name: lastName,
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              first_name: email.split('@')[0],
+              last_name: ''
+            }
           }
-        }
-      });
-
-      if (error) {
-        if (error.message.includes('already registered')) {
-          toast({
-            title: "ข้อผิดพลาด",
-            description: "อีเมลนี้ได้ลงทะเบียนแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "ข้อผิดพลาด",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
-        return;
-      }
-
-      toast({
-        title: "สำเร็จ!",
-        description: "ลงทะเบียนสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี",
-      });
-    } catch (error) {
-      toast({
-        title: "ข้อผิดพลาด",
-        description: "เกิดข้อผิดพลาดในการลงทะเบียน",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const signIn = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        toast({
-          title: "ข้อผิดพลาด",
-          description: "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
-          variant: "destructive",
         });
-        return;
-      }
 
+        if (error) throw error;
+
+        if (data.user) {
+          // Create profile for new user
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              display_name: email.split('@')[0],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+          }
+
+          toast({
+            title: "ลงทะเบียนสำเร็จ",
+            description: "กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี",
+          });
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          // Ensure profile exists
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', data.user.id)
+            .single();
+
+          if (profileError && profileError.code === 'PGRST116') {
+            // Create profile if it doesn't exist
+            const { error: createError } = await supabase
+              .from('profiles')
+              .insert({
+                id: data.user.id,
+                display_name: data.user.email?.split('@')[0] || 'User',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+
+            if (createError) {
+              console.error('Error creating profile:', createError);
+            }
+          }
+
+          toast({
+            title: "เข้าสู่ระบบสำเร็จ",
+            description: "ยินดีต้อนรับกลับมา",
+          });
+          
+          navigate("/");
+        }
+      }
+    } catch (error: any) {
+      console.error('Auth error:', error);
       toast({
-        title: "ยินดีต้อนรับ!",
-        description: "เข้าสู่ระบบสำเร็จ",
-      });
-    } catch (error) {
-      toast({
-        title: "ข้อผิดพลาด",
-        description: "เกิดข้อผิดพลาดในการเข้าสู่ระบบ",
-        variant: "destructive",
+        title: "เกิดข้อผิดพลาด",
+        description: error.message || "ไม่สามารถเข้าสู่ระบบได้",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const SignUpForm = () => {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
-
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      signUp(email, password, firstName, lastName);
-    };
-
-    return (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="firstName">ชื่อ</Label>
-            <div className="relative">
-              <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                id="firstName"
-                type="text"
-                placeholder="ชื่อ"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="pl-10"
-                required
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="lastName">นามสกุล</Label>
-            <div className="relative">
-              <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                id="lastName"
-                type="text"
-                placeholder="นามสกุล"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="pl-10"
-                required
-              />
-            </div>
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="email">อีเมล</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              id="email"
-              type="email"
-              placeholder="อีเมลของคุณ"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10"
-              required
-            />
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="password">รหัสผ่าน</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              id="password"
-              type="password"
-              placeholder="รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pl-10"
-              minLength={6}
-              required
-            />
-          </div>
-        </div>
-        
-        <Button type="submit" className="w-full" variant="divine" disabled={isLoading}>
-          {isLoading ? "กำลังลงทะเบียน..." : "ลงทะเบียน"}
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
-      </form>
-    );
-  };
-
-  const SignInForm = () => {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      signIn(email, password);
-    };
-
-    return (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="signInEmail">อีเมล</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              id="signInEmail"
-              type="email"
-              placeholder="อีเมลของคุณ"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10"
-              required
-            />
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="signInPassword">รหัสผ่าน</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              id="signInPassword"
-              type="password"
-              placeholder="รหัสผ่านของคุณ"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pl-10"
-              required
-            />
-          </div>
-        </div>
-        
-        <Button type="submit" className="w-full" variant="divine" disabled={isLoading}>
-          {isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
-      </form>
-    );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-divine rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-divine">
-            <Heart className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <h1 className="text-3xl font-serif font-bold bg-gradient-divine bg-clip-text text-transparent">
-            เน็กซัส
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            ชุมชนแห่งการอธิษฐานและการดูแลร่วมกัน
-          </p>
-        </div>
-
-        <Card className="shadow-elegant border-border/50">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-xl">ยินดีต้อนรับ</CardTitle>
-            <CardDescription>
-              เข้าร่วมชุมชนเพื่อแบ่งปันคำอธิษฐานและให้กำลังใจซึ่งกันและกัน
-            </CardDescription>
+        <Card className="bg-card/60 backdrop-blur-sm border-border/50 shadow-peaceful">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-gradient-divine rounded-full flex items-center justify-center">
+                <Heart className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-serif">
+              {isSignUp ? "สร้างบัญชีใหม่" : "เข้าสู่ระบบ"}
+            </CardTitle>
+            <p className="text-muted-foreground">
+              {isSignUp 
+                ? "เข้าร่วมชุมชนอธิษฐานของเรา" 
+                : "ยินดีต้อนรับกลับมา"
+              }
+            </p>
           </CardHeader>
+          
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="signin">เข้าสู่ระบบ</TabsTrigger>
-                <TabsTrigger value="signup">ลงทะเบียน</TabsTrigger>
-              </TabsList>
+            <form onSubmit={handleAuth} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">อีเมล</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
               
-              <TabsContent value="signin">
-                <SignInForm />
-              </TabsContent>
+              <div className="space-y-2">
+                <Label htmlFor="password">รหัสผ่าน</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
               
-              <TabsContent value="signup">
-                <SignUpForm />
-              </TabsContent>
-            </Tabs>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                variant="divine"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                    กำลังดำเนินการ...
+                  </>
+                ) : (
+                  <>
+                    {isSignUp ? "สร้างบัญชี" : "เข้าสู่ระบบ"}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </form>
+            
+            <div className="mt-6 text-center">
+              <Button
+                variant="ghost"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {isSignUp 
+                  ? "มีบัญชีอยู่แล้ว? เข้าสู่ระบบ" 
+                  : "ยังไม่มีบัญชี? สร้างบัญชีใหม่"
+                }
+              </Button>
+            </div>
           </CardContent>
         </Card>
-
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          เพื่อเพิ่มความรวดเร็วในการทดสอบ คุณสามารถปิดการยืนยันอีเมลได้ใน{" "}
-          <a 
-            href="https://supabase.com/dashboard/project/yphbtrhnrlkovgqejdcn/auth/providers" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="underline text-primary hover:text-primary/80"
-          >
-            การตั้งค่า Authentication
-          </a>
-        </p>
+        
+        {/* Features */}
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="text-center">
+            <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Heart className="w-6 h-6 text-pink-600" />
+            </div>
+            <h3 className="font-medium text-sm">คำอธิษฐานร่วมกัน</h3>
+            <p className="text-xs text-muted-foreground">แบ่งปันและอธิษฐานร่วมกัน</p>
+          </div>
+          
+          <div className="text-center">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Users className="w-6 h-6 text-blue-600" />
+            </div>
+            <h3 className="font-medium text-sm">ชุมชนดูแล</h3>
+            <p className="text-xs text-muted-foreground">เข้าร่วมกลุ่มดูแลที่เหมาะสม</p>
+          </div>
+          
+          <div className="text-center">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Shield className="w-6 h-6 text-purple-600" />
+            </div>
+            <h3 className="font-medium text-sm">ความเป็นส่วนตัว</h3>
+            <p className="text-xs text-muted-foreground">ข้อมูลของคุณปลอดภัย</p>
+          </div>
+        </div>
       </div>
     </div>
   );
