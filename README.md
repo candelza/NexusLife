@@ -1,73 +1,157 @@
-# Welcome to your Lovable project
+# Faith Nexus Hub - Spiritual Prayer Community
 
-## Project info
+A modern, spiritual prayer community application built with React, TypeScript, and Supabase. Connect with your faith community, share prayer requests, and grow together in your spiritual journey.
 
-**URL**: https://lovable.dev/projects/cd8511a2-e2f3-4fb5-b357-0fb64df4101e
+## ✨ Features
 
-## How can I edit this code?
+- **🙏 Prayer Management**: Create, share, and respond to prayer requests
+- **👥 Community Groups**: Join care groups and connect with members
+- **📅 Event Calendar**: Organize and attend spiritual events
+- **🔔 Real-time Notifications**: Stay updated with community activities
+- **👤 Profile Management**: Complete user profiles with spiritual information
+- **🎨 Beautiful UI**: Spiritual design system with warm, peaceful colors
+- **📱 Responsive Design**: Works perfectly on all devices
 
-There are several ways of editing your application.
+## 🚀 Quick Start
 
-**Use Lovable**
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Supabase account
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/cd8511a2-e2f3-4fb5-b357-0fb64df4101e) and start prompting.
+### Installation
 
-Changes made via Lovable will be committed automatically to this repo.
+```bash
+# Clone the repository
+git clone https://github.com/candelza/NexusLife.git
+cd NexusLife
 
-**Use your preferred IDE**
+# Install dependencies
+npm install
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# Start local Supabase
+supabase start
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Visit `http://localhost:8080` to see the application.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🛠️ Technology Stack
 
-**Use GitHub Codespaces**
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI Components**: shadcn/ui + Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Auth + Real-time)
+- **Styling**: Custom spiritual design system
+- **State Management**: React hooks + Supabase real-time subscriptions
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 📁 Project Structure
 
-## What technologies are used for this project?
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ui/            # shadcn/ui components
+│   ├── PrayerCard.tsx # Prayer display component
+│   ├── NotificationBell.tsx # Real-time notifications
+│   └── ProfileEditDialog.tsx # Profile management
+├── pages/              # Application pages
+│   ├── Dashboard.tsx   # Main dashboard
+│   ├── Profile.tsx     # User profile
+│   ├── Calendar.tsx    # Event calendar
+│   └── AdminSettings.tsx # Admin panel
+├── integrations/       # External integrations
+│   └── supabase/      # Supabase client & types
+└── hooks/             # Custom React hooks
+```
 
-This project is built with:
+## 🔧 Configuration
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Supabase Setup
 
-## How can I deploy this project?
+1. Create a new Supabase project
+2. Run migrations: `supabase db push`
+3. Update environment variables in `src/integrations/supabase/client.ts`
 
-Simply open [Lovable](https://lovable.dev/projects/cd8511a2-e2f3-4fb5-b357-0fb64df4101e) and click on Share -> Publish.
+### Environment Variables
 
-## Can I connect a custom domain to my Lovable project?
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-Yes, you can!
+## 🎨 Design System
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+The application uses a custom spiritual design system with:
+- **Warm, peaceful color palette**
+- **Divine purple-blue gradients**
+- **Gentle animations and transitions**
+- **Spiritual typography** (Playfair Display + Inter)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 📱 Features in Detail
+
+### Prayer System
+- Create and share prayer requests
+- Like and comment on prayers
+- Share prayers to Facebook
+- Private and public prayer options
+- Prayer categories and urgent flags
+
+### Community Groups
+- Join care groups
+- Group-based prayer sharing
+- Member management
+- Group events and activities
+
+### Real-time Features
+- Live notifications
+- Real-time prayer updates
+- Instant messaging system
+- Live event updates
+
+### Admin Features
+- User management
+- Prayer moderation
+- System administration
+- Analytics dashboard
+
+## 🚀 Deployment
+
+### Local Development
+```bash
+npm run dev
+```
+
+### Production Build
+```bash
+npm run build
+npm run preview
+```
+
+### Deploy to Vercel
+```bash
+npm run build
+vercel --prod
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🙏 Support
+
+For support and questions:
+- Create an issue on GitHub
+- Join our community discussions
+- Contact the development team
+
+---
+
+**Built with ❤️ for the spiritual community**
