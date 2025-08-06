@@ -66,23 +66,19 @@ const ProfileEditDialog = ({ trigger, profile, onProfileUpdate }: ProfileEditDia
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${userId}/${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { data, error: uploadError } = await supabase.storage
         .from('profile-pictures')
         .upload(fileName, avatarFile, {
           cacheControl: '3600',
-          upsert: false
+          upsert: true,
         });
 
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage
-        .from('profile-pictures')
-        .getPublicUrl(fileName);
-
-      return data.publicUrl;
+      return supabase.storage.from('profile-pictures').getPublicUrl(data.path).data.publicUrl;
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      throw error;
+      throw new Error('ไม่สามารถอัปโหลดรูปโปรไฟล์ได้');
     }
   };
 
