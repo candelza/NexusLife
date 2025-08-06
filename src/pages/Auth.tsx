@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Heart, Shield, Users, ArrowRight, UserPlus, LogIn, Mail } from "lucide-react";
+import { Heart, Shield, Users, ArrowRight, UserPlus, LogIn, Mail, AlertCircle } from "lucide-react";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -44,11 +44,21 @@ const Auth = () => {
       
     } catch (error: any) {
       console.error('Google auth error:', error);
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: error.message || "ไม่สามารถเข้าสู่ระบบด้วย Google ได้",
-        variant: "destructive"
-      });
+      
+      // Check if it's a provider not enabled error
+      if (error.message?.includes('provider is not enabled')) {
+        toast({
+          title: "Google OAuth ยังไม่ได้ตั้งค่า",
+          description: "กรุณาตั้งค่า Google OAuth ใน Supabase Dashboard ก่อน",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "เกิดข้อผิดพลาด",
+          description: error.message || "ไม่สามารถเข้าสู่ระบบด้วย Google ได้",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsGoogleLoading(false);
     }
@@ -200,12 +210,12 @@ const Auth = () => {
               </Button>
             </div>
 
-            {/* Google Login Button */}
+            {/* Google Login Button - Temporarily Disabled */}
             <div className="mb-6">
               <Button
                 onClick={handleGoogleAuth}
                 disabled={isGoogleLoading}
-                className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm"
+                className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm opacity-60"
                 variant="outline"
               >
                 {isGoogleLoading ? (
@@ -225,6 +235,17 @@ const Auth = () => {
                   </>
                 )}
               </Button>
+              
+              {/* Configuration Notice */}
+              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-yellow-800">
+                    <p className="font-medium">Google OAuth ยังไม่ได้ตั้งค่า</p>
+                    <p>กรุณาตั้งค่า Google OAuth ใน Supabase Dashboard ก่อนใช้งาน</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Divider */}
