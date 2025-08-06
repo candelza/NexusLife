@@ -2,9 +2,17 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Local development environment
-const SUPABASE_URL = "http://127.0.0.1:54321";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+// Check if we're in production
+const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+
+// Use production or local Supabase based on environment
+const SUPABASE_URL = isProduction 
+  ? "https://yphbtrhnrlkovgqejdcn.supabase.co"  // Production URL
+  : "http://127.0.0.1:54321";  // Local development URL
+
+const SUPABASE_PUBLISHABLE_KEY = isProduction
+  ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwaGJ0cmhucmxrb3ZncWVqZGNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMTY4NTQsImV4cCI6MjA2OTg5Mjg1NH0.Tojcj72ho3jyh-JEkjtMb208w6m-PzNHlbSEB7RPnFY"  // Production key
+  : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";  // Local key
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
