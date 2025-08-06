@@ -12,6 +12,7 @@ import MemberManagement from "./pages/MemberManagement";
 import PrayerDetail from "./pages/PrayerDetail";
 import AdminSettings from "./pages/AdminSettings";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/prayer/:id" element={<PrayerDetail />} />
             <Route path="/admin" element={<AdminSettings />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
