@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -22,8 +24,13 @@ import {
   AlertCircle,
   Calendar,
   Heart,
-  MessageCircle
+  MessageCircle,
+  BookOpen,
+  Crown,
+  UserCheck,
+  Settings
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 interface Member {
   id: string;
@@ -34,6 +41,7 @@ interface Member {
     first_name: string | null;
     last_name: string | null;
     avatar_url: string | null;
+    member_level?: string;
   };
   group_members?: {
     role: string;
@@ -55,15 +63,39 @@ interface Prayer {
   };
 }
 
+interface BibleVerse {
+  id: string;
+  verse: string;
+  reference: string;
+  date: string;
+  created_at: string;
+}
+
+interface CareGroup {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+}
+
 const AdminSettings = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [prayers, setPrayers] = useState<Prayer[]>([]);
+  const [bibleVerses, setBibleVerses] = useState<BibleVerse[]>([]);
+  const [careGroups, setCareGroups] = useState<CareGroup[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedPrayer, setSelectedPrayer] = useState<Prayer | null>(null);
+  
+  // New state for forms
+  const [newBibleVerse, setNewBibleVerse] = useState({ verse: '', reference: '', date: '' });
+  const [newCareGroup, setNewCareGroup] = useState({ name: '', description: '' });
+  const [selectedMemberLevel, setSelectedMemberLevel] = useState('');
+  const [selectedCareGroup, setSelectedCareGroup] = useState('');
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -89,6 +121,8 @@ const AdminSettings = () => {
         setIsAdmin(true);
         fetchMembers();
         fetchPrayers();
+        fetchBibleVerses();
+        fetchCareGroups();
       } else {
         setIsAdmin(false);
         toast({
@@ -115,6 +149,7 @@ const AdminSettings = () => {
           first_name,
           last_name,
           avatar_url,
+          member_level,
           group_members(
             role,
             group:care_groups(name)
@@ -145,6 +180,34 @@ const AdminSettings = () => {
       setPrayers(data || []);
     } catch (error) {
       console.error('Error fetching prayers:', error);
+    }
+  };
+
+  const fetchBibleVerses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('daily_bible_verses')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+      setBibleVerses(data || []);
+    } catch (error) {
+      console.error('Error fetching bible verses:', error);
+    }
+  };
+
+  const fetchCareGroups = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('care_groups')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCareGroups(data || []);
+    } catch (error) {
+      console.error('Error fetching care groups:', error);
     }
   };
 
@@ -220,6 +283,116 @@ const AdminSettings = () => {
     }
   };
 
+  const handleUpdateMemberLevel = async (memberId: string, level: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ member_level: level })
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: "อัปเดตระดับสมาชิกสำเร็จ",
+        description: "ระดับสมาชิกได้รับการอัปเดตแล้ว",
+      });
+
+      fetchMembers();
+    } catch (error: any) {
+      console.error('Error updating member level:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถอัปเดตระดับสมาชิกได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddBibleVerse = async () => {
+    try {
+      const { error } = await supabase
+        .from('daily_bible_verses')
+        .insert({
+          verse: newBibleVerse.verse,
+          reference: newBibleVerse.reference,
+          date: newBibleVerse.date
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "เพิ่มพระคัมภีร์ประจำวันสำเร็จ",
+        description: "พระคัมภีร์ประจำวันได้รับการเพิ่มแล้ว",
+      });
+
+      setNewBibleVerse({ verse: '', reference: '', date: '' });
+      fetchBibleVerses();
+    } catch (error: any) {
+      console.error('Error adding bible verse:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถเพิ่มพระคัมภีร์ประจำวันได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddCareGroup = async () => {
+    try {
+      const { error } = await supabase
+        .from('care_groups')
+        .insert({
+          name: newCareGroup.name,
+          description: newCareGroup.description
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "เพิ่มกลุ่มดูแลสำเร็จ",
+        description: "กลุ่มดูแลได้รับการเพิ่มแล้ว",
+      });
+
+      setNewCareGroup({ name: '', description: '' });
+      fetchCareGroups();
+    } catch (error: any) {
+      console.error('Error adding care group:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถเพิ่มกลุ่มดูแลได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAssignToGroup = async (memberId: string, groupId: string) => {
+    try {
+      const { error } = await supabase
+        .from('group_members')
+        .insert({
+          member_id: memberId,
+          group_id: groupId,
+          role: 'member'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "จัดกลุ่มสมาชิกสำเร็จ",
+        description: "สมาชิกได้รับการจัดกลุ่มแล้ว",
+      });
+
+      fetchMembers();
+    } catch (error: any) {
+      console.error('Error assigning to group:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถจัดกลุ่มสมาชิกได้",
+        variant: "destructive"
+      });
+    }
+  };
+
   const filteredMembers = members.filter(member => {
     const searchLower = searchTerm.toLowerCase();
     const displayName = member.profile?.display_name || '';
@@ -275,7 +448,7 @@ const AdminSettings = () => {
             <Shield className="w-8 h-8 text-primary" />
             <h1 className="text-3xl font-serif font-bold">การจัดการระบบ</h1>
           </div>
-          <p className="text-muted-foreground">จัดการสมาชิกและคำอธิษฐานทั้งหมดในระบบ</p>
+          <p className="text-muted-foreground">จัดการสมาชิก, คำอธิษฐาน, พระคัมภีร์ประจำวัน และกลุ่มดูแล</p>
         </div>
 
         {/* Search */}
@@ -292,21 +465,33 @@ const AdminSettings = () => {
         </div>
 
         <Tabs defaultValue="members" className="space-y-6">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="members" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
-              สมาชิก ({members.length})
+              สมาชิก
             </TabsTrigger>
             <TabsTrigger value="prayers" className="flex items-center gap-2">
               <Heart className="w-4 h-4" />
-              คำอธิษฐาน ({prayers.length})
+              คำอธิษฐาน
+            </TabsTrigger>
+            <TabsTrigger value="bible" className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              พระคัมภีร์
+            </TabsTrigger>
+            <TabsTrigger value="groups" className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4" />
+              กลุ่มดูแล
+            </TabsTrigger>
+            <TabsTrigger value="levels" className="flex items-center gap-2">
+              <Crown className="w-4 h-4" />
+              ระดับสมาชิก
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="members" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>รายชื่อสมาชิกทั้งหมด</CardTitle>
+                <CardTitle>รายชื่อสมาชิกทั้งหมด ({members.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -332,23 +517,56 @@ const AdminSettings = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="capitalize">
+                          {member.profile?.member_level || 'member'}
+                        </Badge>
                         {member.group_members && member.group_members.length > 0 && (
-                          <Badge variant="outline">
+                          <Badge variant="secondary">
                             {member.group_members[0].group.name}
                           </Badge>
                         )}
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button variant="ghost" size="sm">
-                              <Trash2 className="w-4 h-4 text-red-500" />
+                              <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>ยืนยันการลบสมาชิก</DialogTitle>
+                              <DialogTitle>จัดการสมาชิก</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4">
-                              <p>คุณแน่ใจหรือไม่ที่จะลบสมาชิกคนนี้? การกระทำนี้ไม่สามารถยกเลิกได้</p>
+                              <div>
+                                <Label>ระดับสมาชิก</Label>
+                                <Select 
+                                  value={member.profile?.member_level || 'member'} 
+                                  onValueChange={(value) => handleUpdateMemberLevel(member.id, value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="member">สมาชิก</SelectItem>
+                                    <SelectItem value="moderator">ผู้ดูแล</SelectItem>
+                                    <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label>จัดกลุ่ม</Label>
+                                <Select onValueChange={(value) => handleAssignToGroup(member.id, value)}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="เลือกกลุ่ม" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {careGroups.map((group) => (
+                                      <SelectItem key={group.id} value={group.id}>
+                                        {group.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                               <div className="flex justify-end gap-2">
                                 <Button variant="outline">ยกเลิก</Button>
                                 <Button 
@@ -372,7 +590,7 @@ const AdminSettings = () => {
           <TabsContent value="prayers" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>คำอธิษฐานทั้งหมด</CardTitle>
+                <CardTitle>คำอธิษฐานทั้งหมด ({prayers.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -421,6 +639,143 @@ const AdminSettings = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="bible" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>พระคัมภีร์ประจำวัน</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg">
+                    <h3 className="font-medium mb-2">เพิ่มพระคัมภีร์ประจำวันใหม่</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label>ข้อพระคัมภีร์</Label>
+                        <Textarea 
+                          value={newBibleVerse.verse}
+                          onChange={(e) => setNewBibleVerse({...newBibleVerse, verse: e.target.value})}
+                          placeholder="ใส่ข้อพระคัมภีร์ที่นี่..."
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>อ้างอิง</Label>
+                          <Input 
+                            value={newBibleVerse.reference}
+                            onChange={(e) => setNewBibleVerse({...newBibleVerse, reference: e.target.value})}
+                            placeholder="เช่น ยอห์น 3:16"
+                          />
+                        </div>
+                        <div>
+                          <Label>วันที่</Label>
+                          <Input 
+                            type="date"
+                            value={newBibleVerse.date}
+                            onChange={(e) => setNewBibleVerse({...newBibleVerse, date: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      <Button onClick={handleAddBibleVerse}>เพิ่มพระคัมภีร์ประจำวัน</Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {bibleVerses.map((verse) => (
+                      <div key={verse.id} className="p-3 border rounded-lg">
+                        <div className="font-medium">{verse.verse}</div>
+                        <div className="text-sm text-muted-foreground">{verse.reference}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(verse.date).toLocaleDateString('th-TH')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="groups" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>กลุ่มดูแล</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg">
+                    <h3 className="font-medium mb-2">เพิ่มกลุ่มดูแลใหม่</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label>ชื่อกลุ่ม</Label>
+                        <Input 
+                          value={newCareGroup.name}
+                          onChange={(e) => setNewCareGroup({...newCareGroup, name: e.target.value})}
+                          placeholder="ชื่อกลุ่มดูแล..."
+                        />
+                      </div>
+                      <div>
+                        <Label>คำอธิบาย</Label>
+                        <Textarea 
+                          value={newCareGroup.description}
+                          onChange={(e) => setNewCareGroup({...newCareGroup, description: e.target.value})}
+                          placeholder="คำอธิบายกลุ่ม..."
+                        />
+                      </div>
+                      <Button onClick={handleAddCareGroup}>เพิ่มกลุ่มดูแล</Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {careGroups.map((group) => (
+                      <div key={group.id} className="p-3 border rounded-lg">
+                        <div className="font-medium">{group.name}</div>
+                        <div className="text-sm text-muted-foreground">{group.description}</div>
+                        <div className="text-xs text-muted-foreground">
+                          สร้างเมื่อ {new Date(group.created_at).toLocaleDateString('th-TH')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="levels" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>จัดการระดับสมาชิก</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="w-5 h-5 text-blue-500" />
+                        <h3 className="font-medium">สมาชิก</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground">สมาชิกทั่วไป สามารถอ่านและแบ่งปันคำอธิษฐานได้</p>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Shield className="w-5 h-5 text-yellow-500" />
+                        <h3 className="font-medium">ผู้ดูแล</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground">สามารถจัดการคำอธิษฐานและสมาชิกในกลุ่มได้</p>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Crown className="w-5 h-5 text-purple-500" />
+                        <h3 className="font-medium">ผู้ดูแลระบบ</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground">สิทธิ์เต็มในการจัดการระบบทั้งหมด</p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

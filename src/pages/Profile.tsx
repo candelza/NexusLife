@@ -288,10 +288,20 @@ const Profile = () => {
               {/* About */}
               <Card className="bg-card/60 backdrop-blur-sm border-border/50">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="w-5 h-5 text-primary" />
-                    เกี่ยวกับฉัน
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Award className="w-5 h-5 text-primary" />
+                      เกี่ยวกับฉัน
+                    </CardTitle>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate('/profile/edit')}
+                    >
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      แก้ไข
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground mb-4">
@@ -306,6 +316,12 @@ const Profile = () => {
                       <div className="flex items-center gap-2 text-sm">
                         <Phone className="w-4 h-4 text-muted-foreground" />
                         <span>{profile.phone}</span>
+                      </div>
+                    )}
+                    {profile?.line_id && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                        <span>Line ID: {profile.line_id}</span>
                       </div>
                     )}
                   </div>
@@ -387,7 +403,11 @@ const Profile = () => {
                     <Users className="w-5 h-5 text-primary" />
                     สมาชิกกลุ่มดูแล
                   </CardTitle>
-                  <Button variant="divine" size="sm">
+                  <Button 
+                    variant="divine" 
+                    size="sm"
+                    onClick={() => navigate('/groups')}
+                  >
                     จัดการกลุ่ม
                   </Button>
                 </div>
