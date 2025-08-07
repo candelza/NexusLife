@@ -112,7 +112,6 @@ const AdminSettings = () => {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedPrayer, setSelectedPrayer] = useState<Prayer | null>(null);
   const [selectedBibleVerse, setSelectedBibleVerse] = useState<BibleVerse | null>(null);
-  const [selectedCareGroup, setSelectedCareGroup] = useState<CareGroup | null>(null);
   
   // New state for forms
   const [newBibleVerse, setNewBibleVerse] = useState({ 
@@ -128,7 +127,6 @@ const AdminSettings = () => {
   });
   const [newCareGroup, setNewCareGroup] = useState({ name: '', description: '' });
   const [selectedMemberLevel, setSelectedMemberLevel] = useState('');
-  const [selectedCareGroup, setSelectedCareGroup] = useState('');
   
   // Edit states
   const [editingMember, setEditingMember] = useState<Member | null>(null);
