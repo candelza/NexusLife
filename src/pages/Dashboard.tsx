@@ -234,7 +234,7 @@ const Dashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 bg-gradient-divine rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-divine animate-pulse">
             <Heart className="w-8 h-8 text-primary-foreground" />
@@ -248,7 +248,7 @@ const Dashboard = () => {
   // Show error state if there's an issue
   if (!user && !isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 bg-gradient-divine rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-divine">
             <Heart className="w-8 h-8 text-primary-foreground" />
@@ -263,7 +263,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {/* Hero Section */}
       <div className="relative h-60 md:h-80 overflow-hidden">
         <img 
@@ -289,7 +289,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
+      <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 bg-white/70 backdrop-blur-sm rounded-t-3xl -mt-4 relative z-10">
         {/* Quick Actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8 -mt-8 md:-mt-16 relative z-10">
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-divine transition-all duration-300 hover:scale-105 cursor-pointer"
