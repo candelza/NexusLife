@@ -13,7 +13,7 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 25 95% 53%;
+    --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222.2 84% 4.9%;
@@ -25,7 +25,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 25 95% 53%;
+    --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
@@ -77,35 +77,48 @@
     background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   }
   
+  /* High contrast text colors for better accessibility */
+  .text-high-contrast {
+    color: #1a202c;
+  }
+  
+  .text-medium-contrast {
+    color: #4a5568;
+  }
+  
+  .bg-high-contrast {
+    background-color: #ffffff;
+  }
+  
   .bg-gradient-divine {
-    background: linear-gradient(135deg, #ff9a56 0%, #ff6b6b 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   }
   
   .bg-gradient-peaceful {
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
   }
   
   .shadow-divine {
-    box-shadow: 0 10px 25px -5px rgba(255, 154, 86, 0.3);
+    box-shadow: 0 10px 25px -5px rgba(102, 126, 234, 0.3);
   }
   
   .shadow-peaceful {
-    box-shadow: 0 10px 25px -5px rgba(255, 236, 210, 0.3);
+    box-shadow: 0 10px 25px -5px rgba(168, 237, 234, 0.3);
   }
   
   .shadow-glow {
-    box-shadow: 0 0 20px rgba(255, 154, 86, 0.4);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
   }
   
   .text-gradient-divine {
-    background: linear-gradient(135deg, #ff9a56 0%, #ff6b6b 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   
   .bg-primary-glow {
-    background: linear-gradient(135deg, #ff9a56 0%, #ff6b6b 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   }
   
   .animate-fade-in-up {

@@ -114,7 +114,7 @@ const Navigation = () => {
               <h1 className="text-xl font-serif font-semibold bg-gradient-divine bg-clip-text text-transparent">
                 เน็กซัส
               </h1>
-              <p className="text-xs text-muted-foreground">ชุมชนแห่งการอธิษฐาน</p>
+              <p className="text-xs text-medium-contrast">ชุมชนแห่งการอธิษฐาน</p>
             </div>
           </Link>
           
