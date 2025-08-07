@@ -16,6 +16,7 @@ import AuthCallback from "./pages/AuthCallback";
 import EditProfile from "./pages/EditProfile";
 import NotFound from "./pages/NotFound";
 import LineIntegration from "./pages/LineIntegration";
+import Debug from "./debug";
 
 import { ErrorBoundary } from "react-error-boundary";
 
@@ -54,8 +55,8 @@ const App = () => (
         <BrowserRouter>
           <Layout>
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/debug" element={<Debug />} />
+              <Route path="/" element={<Debug />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/edit" element={<EditProfile />} />
               <Route path="/new-prayer" element={<NewPrayer />} />

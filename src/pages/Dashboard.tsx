@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import heroImage from "/hero-prayer.jpg";
 import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from '@supabase/supabase-js';
+import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { useToast } from "@/hooks/use-toast";
 import PrayerCard from "@/components/PrayerCard";
 
@@ -54,7 +54,7 @@ const quickActions = [
 
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [prayers, setPrayers] = useState<Prayer[]>([]);
