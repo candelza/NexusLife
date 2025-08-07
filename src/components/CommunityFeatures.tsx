@@ -17,7 +17,6 @@ import {
   UserPlus,
   Activity,
   BookOpen,
-  Prayer,
   CheckCircle,
   Clock
 } from "lucide-react";
@@ -219,7 +218,7 @@ const CommunityFeatures = () => {
                 <p className="text-sm font-medium text-muted-foreground">คำอธิษฐาน</p>
                 <p className="text-2xl font-bold">{stats.totalPrayers}</p>
               </div>
-              <Prayer className="w-8 h-8 text-purple-500" />
+              <Heart className="w-8 h-8 text-purple-500" />
             </div>
           </CardContent>
         </Card>
@@ -371,7 +370,7 @@ const CommunityFeatures = () => {
               className="h-16"
             >
               <div className="text-center">
-                <Prayer className="w-6 h-6 mx-auto mb-2" />
+                <Heart className="w-6 h-6 mx-auto mb-2" />
                 <div className="text-sm font-medium">แบ่งปันคำอธิษฐาน</div>
               </div>
             </Button>

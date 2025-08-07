@@ -21,8 +21,7 @@ import {
   Star,
   BookOpen,
   Users,
-  CheckCircle,
-  Prayer
+  CheckCircle
 } from "lucide-react";
 
 interface PrayerResponse {
