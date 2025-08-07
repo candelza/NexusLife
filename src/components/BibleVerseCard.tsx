@@ -219,19 +219,19 @@ const BibleVerseCard = ({ date = new Date(), showControls = true }: BibleVerseCa
   const currentVerse = verses[currentIndex];
 
   return (
-    <Card className="bg-gradient-divine text-primary-foreground border-0 overflow-hidden">
+    <Card className="bg-white border border-gray-200 shadow-lg overflow-hidden">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Book className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-gray-900">
+            <Book className="w-5 h-5 text-gray-700" />
             พระคัมภีร์ประจำวัน
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="bg-white/20 text-primary-foreground">
+            <Badge variant="secondary" className="bg-gray-100 text-gray-800">
               {currentIndex + 1}/{verses.length}
             </Badge>
             {isCompleted && (
-              <Badge variant="secondary" className="bg-green-500/20 text-green-100">
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
                 <CheckCircle className="w-3 h-3 mr-1" />
                 อ่านแล้ว
               </Badge>
@@ -242,20 +242,20 @@ const BibleVerseCard = ({ date = new Date(), showControls = true }: BibleVerseCa
 
       <CardContent className="space-y-4">
         <div className="space-y-3">
-          <div className="text-sm opacity-90">
+          <div className="text-sm text-gray-600 font-medium">
             {currentVerse.book} {currentVerse.chapter}:{currentVerse.verse_start}
             {currentVerse.verse_end && currentVerse.verse_end !== currentVerse.verse_start && 
               `-${currentVerse.verse_end}`}
           </div>
           
-          <div className="text-lg leading-relaxed">
+          <div className="text-lg leading-relaxed text-gray-900">
             {currentVerse.content_thai || currentVerse.content}
           </div>
           
           {(currentVerse.explanation_thai || currentVerse.explanation) && (
-            <div className="p-4 bg-white/10 rounded-lg">
-              <h4 className="font-medium mb-2">คำอธิบาย</h4>
-              <p className="text-sm opacity-90">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium mb-2 text-gray-900">คำอธิบาย</h4>
+              <p className="text-sm text-gray-700">
                 {currentVerse.explanation_thai || currentVerse.explanation}
               </p>
             </div>
@@ -263,14 +263,14 @@ const BibleVerseCard = ({ date = new Date(), showControls = true }: BibleVerseCa
         </div>
 
         {showControls && (
-          <div className="flex items-center justify-between pt-4 border-t border-white/20">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigateVerse('prev')}
                 disabled={currentIndex === 0}
-                className="text-primary-foreground hover:bg-white/20"
+                className="text-gray-600 hover:bg-gray-100"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
@@ -279,7 +279,7 @@ const BibleVerseCard = ({ date = new Date(), showControls = true }: BibleVerseCa
                 variant="ghost"
                 size="sm"
                 onClick={shuffleVerses}
-                className="text-primary-foreground hover:bg-white/20"
+                className="text-gray-600 hover:bg-gray-100"
               >
                 <Shuffle className="w-4 h-4" />
               </Button>
@@ -289,7 +289,7 @@ const BibleVerseCard = ({ date = new Date(), showControls = true }: BibleVerseCa
                 size="sm"
                 onClick={() => navigateVerse('next')}
                 disabled={currentIndex === verses.length - 1}
-                className="text-primary-foreground hover:bg-white/20"
+                className="text-gray-600 hover:bg-gray-100"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -300,7 +300,7 @@ const BibleVerseCard = ({ date = new Date(), showControls = true }: BibleVerseCa
               size="sm"
               onClick={markAsCompleted}
               disabled={isCompleted}
-              className="bg-white/20 text-primary-foreground hover:bg-white/30"
+              className="bg-gray-800 text-white hover:bg-gray-900"
             >
               {isCompleted ? (
                 <>
