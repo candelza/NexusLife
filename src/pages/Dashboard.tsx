@@ -295,28 +295,28 @@ const Dashboard = () => {
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-divine transition-all duration-300 hover:scale-105 cursor-pointer"
                 onClick={() => navigate("/new-prayer")}>
             <CardContent className="p-3 md:p-6 text-center">
-              <Heart className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-pink-500" />
+              <Heart className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-orange-500" />
               <h3 className="font-semibold text-sm md:text-base">แบ่งปันคำอธิษฐาน</h3>
             </CardContent>
           </Card>
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-divine transition-all duration-300 hover:scale-105 cursor-pointer"
                 onClick={() => navigate("/bible-reading")}>
             <CardContent className="p-3 md:p-6 text-center">
-              <Book className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-purple-500" />
+              <Book className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-amber-600" />
               <h3 className="font-semibold text-sm md:text-base">อ่านพระคัมภีร์</h3>
             </CardContent>
           </Card>
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-divine transition-all duration-300 hover:scale-105 cursor-pointer"
                 onClick={() => navigate("/groups")}>
             <CardContent className="p-3 md:p-6 text-center">
-              <Users className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-blue-500" />
+              <Users className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-orange-600" />
               <h3 className="font-semibold text-sm md:text-base">เข้าร่วมกลุ่ม</h3>
             </CardContent>
           </Card>
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-divine transition-all duration-300 hover:scale-105 cursor-pointer"
                 onClick={() => navigate("/calendar")}>
             <CardContent className="p-3 md:p-6 text-center">
-              <Calendar className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-green-500" />
+              <Calendar className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-orange-500" />
               <h3 className="font-semibold text-sm md:text-base">การประชุมอธิษฐาน</h3>
             </CardContent>
           </Card>
