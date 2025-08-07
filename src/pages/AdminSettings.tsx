@@ -845,13 +845,13 @@ const AdminSettings = () => {
       if (error) throw error;
 
       toast({
-        title: "เพิ่มบทบาทสำเร็จ",
-        description: "บทบาทได้รับการเพิ่มแล้ว",
+        title: "เปลี่ยนบทบาทสำเร็จ",
+        description: "บทบาทได้รับการเปลี่ยนแล้ว",
       });
       
       addActivityLog(
-        "เพิ่มบทบาท", 
-        `เพิ่มบทบาท ${role} ให้กับ User ID: ${userId}`, 
+        "เปลี่ยนบทบาท", 
+        `เปลี่ยนบทบาทเป็น ${role} ให้กับ User ID: ${userId}`, 
         'success'
       );
 
@@ -865,7 +865,7 @@ const AdminSettings = () => {
       console.error('Error adding user role:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถเพิ่มบทบาทได้",
+        description: "ไม่สามารถเปลี่ยนบทบาทได้",
         variant: "destructive"
       });
     }
@@ -1449,19 +1449,19 @@ const AdminSettings = () => {
                         <DialogTrigger asChild>
                           <Button size="sm">
                             <UserPlus className="w-4 h-4 mr-2" />
-                            เพิ่มบทบาท
+                            เปลี่ยนบทบาท
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>เพิ่มบทบาทใหม่</DialogTitle>
+                            <DialogTitle>เปลี่ยนบทบาทของสมาชิก</DialogTitle>
                           </DialogHeader>
                           <div className="space-y-4">
                             <div>
                               <Label>เลือกสมาชิก</Label>
                               <Select id="new-user-id">
                                 <SelectTrigger>
-                                  <SelectValue placeholder="เลือกสมาชิกที่ต้องการเพิ่มบทบาท" />
+                                  <SelectValue placeholder="เลือกสมาชิกที่ต้องการเปลี่ยนบทบาท" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {members.map((member) => (
@@ -1502,7 +1502,7 @@ const AdminSettings = () => {
                                   });
                                 }
                               }}>
-                                เพิ่มบทบาท
+                                บันทึก
                               </Button>
                             </div>
                           </div>
