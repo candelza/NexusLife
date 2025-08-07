@@ -13,8 +13,8 @@
 3. Choose **Web application**
 4. Add authorized redirect URIs:
    ```
-   https://your-project-ref.supabase.co/auth/v1/callback
-   http://localhost:8080/auth/callback (for local development)
+   https://your-project-ref.supabase.co/auth/v1/ด้callback
+  http://localhost:8080/auth/callback  (for local development)
    ```
 5. Copy the **Client ID** and **Client Secret**
 
