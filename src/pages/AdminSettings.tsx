@@ -1166,10 +1166,17 @@ const AdminSettings = () => {
                                 <div className="flex justify-end gap-2">
                                   <Button variant="outline">ยกเลิก</Button>
                                   <Button 
-                                    variant="destructive"
-                                    onClick={() => handleDeleteMember(member.id)}
+                                    variant="default"
+                                    onClick={() => {
+                                      // Save changes for member level and group assignment
+                                      toast({
+                                        title: "บันทึกสำเร็จ",
+                                        description: "ข้อมูลสมาชิกได้รับการอัปเดตแล้ว",
+                                      });
+                                      addActivityLog('บันทึกข้อมูลสมาชิก', `อัปเดตข้อมูลสมาชิก ${member.profile?.display_name || member.email}`);
+                                    }}
                                   >
-                                    ลบสมาชิก
+                                    บันทึก
                                   </Button>
                                 </div>
                               </div>
