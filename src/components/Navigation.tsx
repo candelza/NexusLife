@@ -205,8 +205,8 @@ const Navigation = () => {
               <SheetContent side="right" className="w-80">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2 pb-4 border-b">
-                    <div className="w-8 h-8 bg-gradient-divine rounded-lg flex items-center justify-center">
-                      <Heart className="w-4 h-4 text-primary-foreground" />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-glow overflow-hidden">
+                      <img src="/logo.png" alt="Nexus Logo" className="w-full h-full object-cover" />
                     </div>
                     <span className="font-serif font-semibold">เมนู</span>
                   </div>
@@ -275,8 +275,8 @@ const Navigation = () => {
         {/* Top Bar */}
         <div className="flex items-center justify-between px-4 py-3 bg-card/60 backdrop-blur-md border-b border-border/50">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-divine rounded-lg flex items-center justify-center">
-                                  <Heart className="w-4 h-4 text-gray-700" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-glow overflow-hidden">
+              <img src="/logo.png" alt="Nexus Logo" className="w-full h-full object-cover" />
             </div>
             <span className="font-serif font-semibold text-black">
               NexusLife
