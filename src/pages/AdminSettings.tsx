@@ -136,6 +136,9 @@ const AdminSettings = () => {
   const [newRoleType, setNewRoleType] = useState<'admin' | 'moderator' | 'member'>('member');
   const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
   
+  // Delete states
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  
   // Activity log states
   const [activityLog, setActivityLog] = useState<Array<{
     id: string;
@@ -853,6 +856,9 @@ const AdminSettings = () => {
         console.log('Debug - User cancelled deletion');
         return;
       }
+
+      // Set loading state
+      setDeletingGroupId(groupId);
       
       // First delete group members
       console.log('Debug - Deleting group members...');
@@ -880,6 +886,21 @@ const AdminSettings = () => {
         throw error;
       }
 
+      // Verify the group was actually deleted
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('care_groups')
+        .select('id')
+        .eq('id', groupId)
+        .single();
+
+      if (verifyData) {
+        console.error('Group still exists after deletion attempt');
+        throw new Error('ไม่สามารถลบกลุ่มดูแลได้ - กลุ่มยังคงอยู่ในระบบ');
+      }
+
+      // Update state immediately by filtering out the deleted group
+      setCareGroups(prevGroups => prevGroups.filter(group => group.id !== groupId));
+      
       toast({
         title: "ลบกลุ่มดูแลสำเร็จ",
         description: "กลุ่มดูแลได้ถูกลบออกจากระบบแล้ว",
@@ -890,9 +911,6 @@ const AdminSettings = () => {
         `ลบกลุ่มดูแล ID: ${groupId}`, 
         'success'
       );
-
-      // Refresh the care groups list
-      await fetchCareGroups();
     } catch (error: any) {
       console.error('Error deleting care group:', error);
       toast({
@@ -900,6 +918,9 @@ const AdminSettings = () => {
         description: `ไม่สามารถลบกลุ่มดูแลได้: ${error.message}`,
         variant: "destructive"
       });
+    } finally {
+      // Clear loading state
+      setDeletingGroupId(null);
     }
   };
 
@@ -1525,7 +1546,7 @@ const AdminSettings = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    {careGroups.map((group) => (
+                    {careGroups.filter(group => group.id !== deletingGroupId).map((group) => (
                       <div key={group.id} className="p-3 border rounded-lg">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
@@ -1547,8 +1568,13 @@ const AdminSettings = () => {
                               variant="ghost" 
                               size="sm"
                               onClick={() => handleDeleteCareGroup(group.id)}
+                              disabled={deletingGroupId === group.id}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              {deletingGroupId === group.id ? (
+                                <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
                             </Button>
                           </div>
                         </div>
@@ -1577,7 +1603,7 @@ const AdminSettings = () => {
                     </div>
                     <div className="p-4 border rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
-                        <Shield className="w-5 h-5 text-yellow-500" />
+                        <Shield className="w-5 h-5 text-purple-500" />
                         <h3 className="font-medium">ผู้ดูแล</h3>
                       </div>
                       <p className="text-sm text-muted-foreground">สามารถจัดการคำอธิษฐานและสมาชิกในกลุ่มได้</p>

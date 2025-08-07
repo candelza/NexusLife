@@ -129,7 +129,7 @@ const Navigation = () => {
                     className={cn(
                       "h-9 px-3",
                       isActive(item.path) 
-                        ? "nav-active shadow-yellow-500/20" 
+                        ? "nav-active shadow-purple-500/20" 
                         : "hover:bg-accent"
                     )}
                   >
@@ -368,45 +368,80 @@ const Navigation = () => {
         {/* Bottom Navigation */}
         <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border/50 z-50 md:hidden">
           <div className="flex items-center justify-around px-2 py-2">
-            {mobileNavItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className="flex flex-col items-center justify-center w-full py-2"
-                >
-                  <div className={cn(
-                    "flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors",
-                    isActive(item.path) 
-                      ? "nav-active-bg nav-active-text" 
-                      : "text-gray-600 hover:text-gray-900"
-                  )}>
-                    <Icon className={cn(
-                      "w-5 h-5",
-                      isActive(item.path) ? "nav-active-icon" : "text-gray-600"
-                    )} />
-                    <span className={cn(
-                      "text-xs font-medium",
-                      isActive(item.path) ? "nav-active-text" : "text-gray-600"
+            {/* Left side navigation items */}
+            <div className="flex items-center justify-around flex-1">
+              {mobileNavItems.slice(0, 2).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className="flex flex-col items-center justify-center w-full py-2"
+                  >
+                    <div className={cn(
+                      "flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors",
+                      isActive(item.path) 
+                        ? "nav-active-bg nav-active-text" 
+                        : "text-gray-600 hover:text-gray-900"
                     )}>
-                      {item.label}
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
+                      <Icon className={cn(
+                        "w-5 h-5",
+                        isActive(item.path) ? "nav-active-icon" : "text-gray-600"
+                      )} />
+                      <span className={cn(
+                        "text-xs font-medium",
+                        isActive(item.path) ? "nav-active-text" : "text-gray-600"
+                      )}>
+                        {item.label}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
             
-            {/* Quick Add Button */}
-            <div className="flex flex-col items-center justify-center w-full py-2">
+            {/* Center Quick Add Button */}
+            <div className="flex flex-col items-center justify-center px-4 py-2">
               <Link to="/new-prayer">
                 <div className="flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors">
-                  <div className="w-10 h-10 bg-gradient-divine rounded-full flex items-center justify-center shadow-glow">
-                    <Plus className="w-5 h-5 text-gray-100" />
+                  <div className="w-12 h-12 bg-gradient-divine rounded-full flex items-center justify-center shadow-glow">
+                    <Plus className="w-6 h-6 text-white" />
                   </div>
-                  <span className="text-xs font-medium text-primary">ใหม่</span>
+                  <span className="text-xs font-medium text-primary">สร้างอธิษฐานใหม่</span>
                 </div>
               </Link>
+            </div>
+            
+            {/* Right side navigation items */}
+            <div className="flex items-center justify-around flex-1">
+              {mobileNavItems.slice(2).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className="flex flex-col items-center justify-center w-full py-2"
+                  >
+                    <div className={cn(
+                      "flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors",
+                      isActive(item.path) 
+                        ? "nav-active-bg nav-active-text" 
+                        : "text-gray-600 hover:text-gray-900"
+                    )}>
+                      <Icon className={cn(
+                        "w-5 h-5",
+                        isActive(item.path) ? "nav-active-icon" : "text-gray-600"
+                      )} />
+                      <span className={cn(
+                        "text-xs font-medium",
+                        isActive(item.path) ? "nav-active-text" : "text-gray-600"
+                      )}>
+                        {item.label}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>

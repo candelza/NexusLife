@@ -353,23 +353,23 @@
 /* Active navigation styles */
 @layer components {
   .nav-active {
-    @apply text-yellow-500 bg-yellow-500/10 border-yellow-500/20;
+    @apply text-purple-500 bg-purple-500/10 border-purple-500/20;
   }
   
   .nav-active-text {
-    @apply text-yellow-500;
+    @apply text-purple-500;
   }
   
   .nav-active-icon {
-    @apply text-yellow-500;
+    @apply text-purple-500;
   }
   
   .nav-active-bg {
-    @apply bg-yellow-500/10;
+    @apply bg-purple-500/10;
   }
   
   .nav-active-border {
-    @apply border-yellow-500/20;
+    @apply border-purple-500/20;
   }
   
   /* Submit button styles */
