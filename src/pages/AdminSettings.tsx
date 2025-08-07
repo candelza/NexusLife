@@ -28,7 +28,9 @@ import {
   BookOpen,
   Crown,
   UserCheck,
-  Settings
+  Settings,
+  Save,
+  X
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
@@ -65,9 +67,15 @@ interface Prayer {
 
 interface BibleVerse {
   id: string;
-  verse: string;
-  reference: string;
-  date: string;
+  book: string;
+  chapter: number;
+  content: string;
+  content_thai: string | null;
+  verse_start: number;
+  verse_end: number | null;
+  reading_day: number;
+  explanation: string | null;
+  explanation_thai: string | null;
   created_at: string;
 }
 
@@ -78,6 +86,19 @@ interface CareGroup {
   created_at: string;
 }
 
+interface UserRole {
+  id: string;
+  user_id: string;
+  role: 'admin' | 'moderator' | 'member';
+  assigned_at: string;
+  assigned_by: string | null;
+  profile?: {
+    display_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+  };
+}
+
 const AdminSettings = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -85,16 +106,35 @@ const AdminSettings = () => {
   const [prayers, setPrayers] = useState<Prayer[]>([]);
   const [bibleVerses, setBibleVerses] = useState<BibleVerse[]>([]);
   const [careGroups, setCareGroups] = useState<CareGroup[]>([]);
+  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedPrayer, setSelectedPrayer] = useState<Prayer | null>(null);
+  const [selectedBibleVerse, setSelectedBibleVerse] = useState<BibleVerse | null>(null);
+  const [selectedCareGroup, setSelectedCareGroup] = useState<CareGroup | null>(null);
   
   // New state for forms
-  const [newBibleVerse, setNewBibleVerse] = useState({ verse: '', reference: '', date: '' });
+  const [newBibleVerse, setNewBibleVerse] = useState({ 
+    book: '', 
+    chapter: 1, 
+    content: '', 
+    content_thai: '', 
+    verse_start: 1, 
+    verse_end: null, 
+    reading_day: 1,
+    explanation: '',
+    explanation_thai: ''
+  });
   const [newCareGroup, setNewCareGroup] = useState({ name: '', description: '' });
   const [selectedMemberLevel, setSelectedMemberLevel] = useState('');
   const [selectedCareGroup, setSelectedCareGroup] = useState('');
+  
+  // Edit states
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [editingPrayer, setEditingPrayer] = useState<Prayer | null>(null);
+  const [editingBibleVerse, setEditingBibleVerse] = useState<BibleVerse | null>(null);
+  const [editingCareGroup, setEditingCareGroup] = useState<CareGroup | null>(null);
   
   const { toast } = useToast();
 
@@ -123,6 +163,7 @@ const AdminSettings = () => {
         fetchPrayers();
         fetchBibleVerses();
         fetchCareGroups();
+        fetchUserRoles();
       } else {
         setIsAdmin(false);
         toast({
@@ -186,9 +227,9 @@ const AdminSettings = () => {
   const fetchBibleVerses = async () => {
     try {
       const { data, error } = await supabase
-        .from('daily_bible_verses')
+        .from('bible_verses')
         .select('*')
-        .order('date', { ascending: false });
+        .order('reading_day', { ascending: false });
 
       if (error) throw error;
       setBibleVerses(data || []);
@@ -208,6 +249,27 @@ const AdminSettings = () => {
       setCareGroups(data || []);
     } catch (error) {
       console.error('Error fetching care groups:', error);
+    }
+  };
+
+  const fetchUserRoles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select(`
+          *,
+          profile:profiles!user_roles_user_id_fkey(
+            display_name,
+            first_name,
+            last_name
+          )
+        `)
+        .order('assigned_at', { ascending: false });
+
+      if (error) throw error;
+      setUserRoles(data || []);
+    } catch (error) {
+      console.error('Error fetching user roles:', error);
     }
   };
 
@@ -336,11 +398,17 @@ const AdminSettings = () => {
   const handleAddBibleVerse = async () => {
     try {
       const { error } = await supabase
-        .from('daily_bible_verses')
+        .from('bible_verses')
         .insert({
-          verse: newBibleVerse.verse,
-          reference: newBibleVerse.reference,
-          date: newBibleVerse.date
+          book: newBibleVerse.book,
+          chapter: newBibleVerse.chapter,
+          content: newBibleVerse.content,
+          content_thai: newBibleVerse.content_thai || null,
+          verse_start: newBibleVerse.verse_start,
+          verse_end: newBibleVerse.verse_end,
+          reading_day: newBibleVerse.reading_day,
+          explanation: newBibleVerse.explanation || null,
+          explanation_thai: newBibleVerse.explanation_thai || null
         });
 
       if (error) throw error;
@@ -350,7 +418,17 @@ const AdminSettings = () => {
         description: "พระคัมภีร์ประจำวันได้รับการเพิ่มแล้ว",
       });
 
-      setNewBibleVerse({ verse: '', reference: '', date: '' });
+      setNewBibleVerse({ 
+        book: '', 
+        chapter: 1, 
+        content: '', 
+        content_thai: '', 
+        verse_start: 1, 
+        verse_end: null, 
+        reading_day: 1,
+        explanation: '',
+        explanation_thai: ''
+      });
       fetchBibleVerses();
     } catch (error: any) {
       console.error('Error adding bible verse:', error);
@@ -413,6 +491,280 @@ const AdminSettings = () => {
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถจัดกลุ่มสมาชิกได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Edit member function
+  const handleEditMember = async (memberId: string, updatedData: any) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          display_name: updatedData.display_name,
+          first_name: updatedData.first_name,
+          last_name: updatedData.last_name,
+          member_level: updatedData.member_level
+        })
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: "แก้ไขสมาชิกสำเร็จ",
+        description: "ข้อมูลสมาชิกได้รับการอัปเดตแล้ว",
+      });
+
+      setEditingMember(null);
+      fetchMembers();
+    } catch (error: any) {
+      console.error('Error updating member:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถแก้ไขข้อมูลสมาชิกได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Edit prayer function
+  const handleEditPrayer = async (prayerId: string, updatedData: any) => {
+    try {
+      const { error } = await supabase
+        .from('prayers')
+        .update({
+          title: updatedData.title,
+          description: updatedData.description,
+          status: updatedData.status
+        })
+        .eq('id', prayerId);
+
+      if (error) throw error;
+
+      toast({
+        title: "แก้ไขคำอธิษฐานสำเร็จ",
+        description: "ข้อมูลคำอธิษฐานได้รับการอัปเดตแล้ว",
+      });
+
+      setEditingPrayer(null);
+      fetchPrayers();
+    } catch (error: any) {
+      console.error('Error updating prayer:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถแก้ไขข้อมูลคำอธิษฐานได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Edit bible verse function
+  const handleEditBibleVerse = async (verseId: string, updatedData: any) => {
+    try {
+      const { error } = await supabase
+        .from('bible_verses')
+        .update({
+          book: updatedData.book,
+          chapter: updatedData.chapter,
+          content: updatedData.content,
+          content_thai: updatedData.content_thai || null,
+          verse_start: updatedData.verse_start,
+          verse_end: updatedData.verse_end,
+          reading_day: updatedData.reading_day,
+          explanation: updatedData.explanation || null,
+          explanation_thai: updatedData.explanation_thai || null
+        })
+        .eq('id', verseId);
+
+      if (error) throw error;
+
+      toast({
+        title: "แก้ไขพระคัมภีร์สำเร็จ",
+        description: "ข้อมูลพระคัมภีร์ได้รับการอัปเดตแล้ว",
+      });
+
+      setEditingBibleVerse(null);
+      fetchBibleVerses();
+    } catch (error: any) {
+      console.error('Error updating bible verse:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถแก้ไขข้อมูลพระคัมภีร์ได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Edit care group function
+  const handleEditCareGroup = async (groupId: string, updatedData: any) => {
+    try {
+      const { error } = await supabase
+        .from('care_groups')
+        .update({
+          name: updatedData.name,
+          description: updatedData.description
+        })
+        .eq('id', groupId);
+
+      if (error) throw error;
+
+      toast({
+        title: "แก้ไขกลุ่มดูแลสำเร็จ",
+        description: "ข้อมูลกลุ่มดูแลได้รับการอัปเดตแล้ว",
+      });
+
+      setEditingCareGroup(null);
+      fetchCareGroups();
+    } catch (error: any) {
+      console.error('Error updating care group:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถแก้ไขข้อมูลกลุ่มดูแลได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Delete bible verse function
+  const handleDeleteBibleVerse = async (verseId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bible_verses')
+        .delete()
+        .eq('id', verseId);
+
+      if (error) throw error;
+
+      toast({
+        title: "ลบพระคัมภีร์สำเร็จ",
+        description: "พระคัมภีร์ได้ถูกลบออกจากระบบแล้ว",
+      });
+
+      fetchBibleVerses();
+    } catch (error: any) {
+      console.error('Error deleting bible verse:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถลบพระคัมภีร์ได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Delete care group function
+  const handleDeleteCareGroup = async (groupId: string) => {
+    try {
+      // First delete group members
+      const { error: membersError } = await supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId);
+
+      if (membersError) throw membersError;
+
+      // Then delete the care group
+      const { error } = await supabase
+        .from('care_groups')
+        .delete()
+        .eq('id', groupId);
+
+      if (error) throw error;
+
+      toast({
+        title: "ลบกลุ่มดูแลสำเร็จ",
+        description: "กลุ่มดูแลได้ถูกลบออกจากระบบแล้ว",
+      });
+
+      fetchCareGroups();
+    } catch (error: any) {
+      console.error('Error deleting care group:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถลบกลุ่มดูแลได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Add user role function
+  const handleAddUserRole = async (userId: string, role: 'admin' | 'moderator' | 'member') => {
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: userId,
+          role: role,
+          assigned_by: user?.id || null
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "เพิ่มบทบาทสำเร็จ",
+        description: "บทบาทได้รับการเพิ่มแล้ว",
+      });
+
+      fetchUserRoles();
+    } catch (error: any) {
+      console.error('Error adding user role:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถเพิ่มบทบาทได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Update user role function
+  const handleUpdateUserRole = async (roleId: string, newRole: 'admin' | 'moderator' | 'member') => {
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({
+          role: newRole
+        })
+        .eq('id', roleId);
+
+      if (error) throw error;
+
+      toast({
+        title: "อัปเดตบทบาทสำเร็จ",
+        description: "บทบาทได้รับการอัปเดตแล้ว",
+      });
+
+      fetchUserRoles();
+    } catch (error: any) {
+      console.error('Error updating user role:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถอัปเดตบทบาทได้",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Delete user role function
+  const handleDeleteUserRole = async (roleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('id', roleId);
+
+      if (error) throw error;
+
+      toast({
+        title: "ลบบทบาทสำเร็จ",
+        description: "บทบาทได้ถูกลบออกจากระบบแล้ว",
+      });
+
+      fetchUserRoles();
+    } catch (error: any) {
+      console.error('Error deleting user role:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถลบบทบาทได้",
         variant: "destructive"
       });
     }
@@ -550,60 +902,69 @@ const AdminSettings = () => {
                             {member.group_members[0].group.name}
                           </Badge>
                         )}
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>จัดการสมาชิก</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <Label>ระดับสมาชิก</Label>
-                                <Select 
-                                  value={member.profile?.member_level || 'member'} 
-                                  onValueChange={(value) => handleUpdateMemberLevel(member.id, value)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="member">สมาชิก</SelectItem>
-                                    <SelectItem value="moderator">ผู้ดูแล</SelectItem>
-                                    <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setEditingMember(member)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>จัดการสมาชิก</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label>ระดับสมาชิก</Label>
+                                  <Select 
+                                    value={member.profile?.member_level || 'member'} 
+                                    onValueChange={(value) => handleUpdateMemberLevel(member.id, value)}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="member">สมาชิก</SelectItem>
+                                      <SelectItem value="moderator">ผู้ดูแล</SelectItem>
+                                      <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label>จัดกลุ่ม</Label>
+                                  <Select onValueChange={(value) => handleAssignToGroup(member.id, value)}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="เลือกกลุ่ม" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {careGroups.map((group) => (
+                                        <SelectItem key={group.id} value={group.id}>
+                                          {group.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="outline">ยกเลิก</Button>
+                                  <Button 
+                                    variant="destructive"
+                                    onClick={() => handleDeleteMember(member.id)}
+                                  >
+                                    ลบสมาชิก
+                                  </Button>
+                                </div>
                               </div>
-                              <div>
-                                <Label>จัดกลุ่ม</Label>
-                                <Select onValueChange={(value) => handleAssignToGroup(member.id, value)}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="เลือกกลุ่ม" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {careGroups.map((group) => (
-                                      <SelectItem key={group.id} value={group.id}>
-                                        {group.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="flex justify-end gap-2">
-                                <Button variant="outline">ยกเลิก</Button>
-                                <Button 
-                                  variant="destructive"
-                                  onClick={() => handleDeleteMember(member.id)}
-                                >
-                                  ลบสมาชิก
-                                </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -637,44 +998,53 @@ const AdminSettings = () => {
                         >
                           {prayer.status === 'answered' ? 'ได้รับการตอบ' : 'กำลังดำเนินการ'}
                         </Badge>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>จัดการคำอธิษฐาน</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <Label>สถานะคำอธิษฐาน</Label>
-                                <Select 
-                                  value={prayer.status} 
-                                  onValueChange={(value) => handleUpdatePrayerStatus(prayer.id, value)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="pending">กำลังดำเนินการ</SelectItem>
-                                    <SelectItem value="answered">ได้รับการตอบ</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setEditingPrayer(prayer)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>จัดการคำอธิษฐาน</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label>สถานะคำอธิษฐาน</Label>
+                                  <Select 
+                                    value={prayer.status} 
+                                    onValueChange={(value) => handleUpdatePrayerStatus(prayer.id, value)}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="pending">กำลังดำเนินการ</SelectItem>
+                                      <SelectItem value="answered">ได้รับการตอบ</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="outline">ยกเลิก</Button>
+                                  <Button 
+                                    variant="destructive"
+                                    onClick={() => handleDeletePrayer(prayer.id)}
+                                  >
+                                    ลบคำอธิษฐาน
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="flex justify-end gap-2">
-                                <Button variant="outline">ยกเลิก</Button>
-                                <Button 
-                                  variant="destructive"
-                                  onClick={() => handleDeletePrayer(prayer.id)}
-                                >
-                                  ลบคำอธิษฐาน
-                                </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -693,31 +1063,85 @@ const AdminSettings = () => {
                   <div className="p-4 border rounded-lg">
                     <h3 className="font-medium mb-2">เพิ่มพระคัมภีร์ประจำวันใหม่</h3>
                     <div className="space-y-3">
-                      <div>
-                        <Label>ข้อพระคัมภีร์</Label>
-                        <Textarea 
-                          value={newBibleVerse.verse}
-                          onChange={(e) => setNewBibleVerse({...newBibleVerse, verse: e.target.value})}
-                          placeholder="ใส่ข้อพระคัมภีร์ที่นี่..."
-                        />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>หนังสือ</Label>
+                          <Input 
+                            value={newBibleVerse.book}
+                            onChange={(e) => setNewBibleVerse({...newBibleVerse, book: e.target.value})}
+                            placeholder="เช่น ยอห์น"
+                          />
+                        </div>
+                        <div>
+                          <Label>บท</Label>
+                          <Input 
+                            type="number"
+                            value={newBibleVerse.chapter}
+                            onChange={(e) => setNewBibleVerse({...newBibleVerse, chapter: parseInt(e.target.value)})}
+                            placeholder="1"
+                          />
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label>อ้างอิง</Label>
+                          <Label>ข้อเริ่มต้น</Label>
                           <Input 
-                            value={newBibleVerse.reference}
-                            onChange={(e) => setNewBibleVerse({...newBibleVerse, reference: e.target.value})}
-                            placeholder="เช่น ยอห์น 3:16"
+                            type="number"
+                            value={newBibleVerse.verse_start}
+                            onChange={(e) => setNewBibleVerse({...newBibleVerse, verse_start: parseInt(e.target.value)})}
+                            placeholder="1"
                           />
                         </div>
                         <div>
-                          <Label>วันที่</Label>
+                          <Label>ข้อสิ้นสุด (ถ้ามี)</Label>
                           <Input 
-                            type="date"
-                            value={newBibleVerse.date}
-                            onChange={(e) => setNewBibleVerse({...newBibleVerse, date: e.target.value})}
+                            type="number"
+                            value={newBibleVerse.verse_end || ''}
+                            onChange={(e) => setNewBibleVerse({...newBibleVerse, verse_end: e.target.value ? parseInt(e.target.value) : null})}
+                            placeholder="16"
                           />
                         </div>
+                      </div>
+                      <div>
+                        <Label>เนื้อหาภาษาอังกฤษ</Label>
+                        <Textarea 
+                          value={newBibleVerse.content}
+                          onChange={(e) => setNewBibleVerse({...newBibleVerse, content: e.target.value})}
+                          placeholder="ใส่เนื้อหาพระคัมภีร์ภาษาอังกฤษ..."
+                        />
+                      </div>
+                      <div>
+                        <Label>เนื้อหาภาษาไทย</Label>
+                        <Textarea 
+                          value={newBibleVerse.content_thai}
+                          onChange={(e) => setNewBibleVerse({...newBibleVerse, content_thai: e.target.value})}
+                          placeholder="ใส่เนื้อหาพระคัมภีร์ภาษาไทย..."
+                        />
+                      </div>
+                      <div>
+                        <Label>วันอ่าน</Label>
+                        <Input 
+                          type="number"
+                          value={newBibleVerse.reading_day}
+                          onChange={(e) => setNewBibleVerse({...newBibleVerse, reading_day: parseInt(e.target.value)})}
+                          placeholder="1"
+                        />
+                      </div>
+                      <div>
+                        <Label>คำอธิบายภาษาอังกฤษ</Label>
+                        <Textarea 
+                          value={newBibleVerse.explanation}
+                          onChange={(e) => setNewBibleVerse({...newBibleVerse, explanation: e.target.value})}
+                          placeholder="ใส่คำอธิบายภาษาอังกฤษ..."
+                        />
+                      </div>
+                      <div>
+                        <Label>คำอธิบายภาษาไทย</Label>
+                        <Textarea 
+                          value={newBibleVerse.explanation_thai}
+                          onChange={(e) => setNewBibleVerse({...newBibleVerse, explanation_thai: e.target.value})}
+                          placeholder="ใส่คำอธิบายภาษาไทย..."
+                        />
                       </div>
                       <Button onClick={handleAddBibleVerse}>เพิ่มพระคัมภีร์ประจำวัน</Button>
                     </div>
@@ -726,10 +1150,33 @@ const AdminSettings = () => {
                   <div className="space-y-2">
                     {bibleVerses.map((verse) => (
                       <div key={verse.id} className="p-3 border rounded-lg">
-                        <div className="font-medium">{verse.verse}</div>
-                        <div className="text-sm text-muted-foreground">{verse.reference}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(verse.date).toLocaleDateString('th-TH')}
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium">{verse.book} {verse.chapter}:{verse.verse_start}{verse.verse_end ? `-${verse.verse_end}` : ''}</div>
+                            <div className="text-sm text-muted-foreground">{verse.content}</div>
+                            {verse.content_thai && (
+                              <div className="text-sm text-muted-foreground">{verse.content_thai}</div>
+                            )}
+                            <div className="text-xs text-muted-foreground">
+                              วันอ่าน: {verse.reading_day}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setEditingBibleVerse(verse)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeleteBibleVerse(verse.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -772,10 +1219,30 @@ const AdminSettings = () => {
                   <div className="space-y-2">
                     {careGroups.map((group) => (
                       <div key={group.id} className="p-3 border rounded-lg">
-                        <div className="font-medium">{group.name}</div>
-                        <div className="text-sm text-muted-foreground">{group.description}</div>
-                        <div className="text-xs text-muted-foreground">
-                          สร้างเมื่อ {new Date(group.created_at).toLocaleDateString('th-TH')}
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium">{group.name}</div>
+                            <div className="text-sm text-muted-foreground">{group.description}</div>
+                            <div className="text-xs text-muted-foreground">
+                              สร้างเมื่อ {new Date(group.created_at).toLocaleDateString('th-TH')}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setEditingCareGroup(group)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeleteCareGroup(group.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -815,11 +1282,358 @@ const AdminSettings = () => {
                       <p className="text-sm text-muted-foreground">สิทธิ์เต็มในการจัดการระบบทั้งหมด</p>
                     </div>
                   </div>
+                  
+                  <div className="space-y-4">
+                    <h3 className="font-medium">รายชื่อผู้ใช้ที่มีบทบาท</h3>
+                    <div className="space-y-2">
+                      {userRoles.map((userRole) => (
+                        <div key={userRole.id} className="p-3 border rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium">
+                                {userRole.profile?.display_name || 
+                                 `${userRole.profile?.first_name || ''} ${userRole.profile?.last_name || ''}`.trim() ||
+                                 'ไม่ระบุชื่อ'}
+                              </div>
+                              <div className="text-sm text-muted-foreground">User ID: {userRole.user_id}</div>
+                              <div className="text-xs text-muted-foreground">
+                                กำหนดเมื่อ {new Date(userRole.assigned_at).toLocaleDateString('th-TH')}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="capitalize">
+                                {userRole.role}
+                              </Badge>
+                              <Select 
+                                value={userRole.role}
+                                onValueChange={(value: 'admin' | 'moderator' | 'member') => 
+                                  handleUpdateUserRole(userRole.id, value)
+                                }
+                              >
+                                <SelectTrigger className="w-32">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="member">สมาชิก</SelectItem>
+                                  <SelectItem value="moderator">ผู้ดูแล</SelectItem>
+                                  <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleDeleteUserRole(userRole.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Member Dialog */}
+        <Dialog open={!!editingMember} onOpenChange={() => setEditingMember(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>แก้ไขข้อมูลสมาชิก</DialogTitle>
+            </DialogHeader>
+            {editingMember && (
+              <div className="space-y-4">
+                <div>
+                  <Label>ชื่อที่แสดง</Label>
+                  <Input 
+                    defaultValue={editingMember.profile?.display_name || ''}
+                    onChange={(e) => setEditingMember({
+                      ...editingMember,
+                      profile: { ...editingMember.profile, display_name: e.target.value }
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label>ชื่อ</Label>
+                  <Input 
+                    defaultValue={editingMember.profile?.first_name || ''}
+                    onChange={(e) => setEditingMember({
+                      ...editingMember,
+                      profile: { ...editingMember.profile, first_name: e.target.value }
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label>นามสกุล</Label>
+                  <Input 
+                    defaultValue={editingMember.profile?.last_name || ''}
+                    onChange={(e) => setEditingMember({
+                      ...editingMember,
+                      profile: { ...editingMember.profile, last_name: e.target.value }
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label>ระดับสมาชิก</Label>
+                  <Select 
+                    defaultValue={editingMember.profile?.member_level || 'member'}
+                    onValueChange={(value) => setEditingMember({
+                      ...editingMember,
+                      profile: { ...editingMember.profile, member_level: value }
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="member">สมาชิก</SelectItem>
+                      <SelectItem value="moderator">ผู้ดูแล</SelectItem>
+                      <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditingMember(null)}>
+                    <X className="w-4 h-4 mr-2" />
+                    ยกเลิก
+                  </Button>
+                  <Button onClick={() => handleEditMember(editingMember.id, editingMember.profile!)}>
+                    <Save className="w-4 h-4 mr-2" />
+                    บันทึก
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Prayer Dialog */}
+        <Dialog open={!!editingPrayer} onOpenChange={() => setEditingPrayer(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>แก้ไขคำอธิษฐาน</DialogTitle>
+            </DialogHeader>
+            {editingPrayer && (
+              <div className="space-y-4">
+                <div>
+                  <Label>หัวข้อ</Label>
+                  <Input 
+                    defaultValue={editingPrayer.title}
+                    onChange={(e) => setEditingPrayer({
+                      ...editingPrayer,
+                      title: e.target.value
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label>รายละเอียด</Label>
+                  <Textarea 
+                    defaultValue={editingPrayer.description}
+                    onChange={(e) => setEditingPrayer({
+                      ...editingPrayer,
+                      description: e.target.value
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label>สถานะ</Label>
+                  <Select 
+                    defaultValue={editingPrayer.status}
+                    onValueChange={(value) => setEditingPrayer({
+                      ...editingPrayer,
+                      status: value
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">กำลังดำเนินการ</SelectItem>
+                      <SelectItem value="answered">ได้รับการตอบ</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditingPrayer(null)}>
+                    <X className="w-4 h-4 mr-2" />
+                    ยกเลิก
+                  </Button>
+                  <Button onClick={() => handleEditPrayer(editingPrayer.id, editingPrayer)}>
+                    <Save className="w-4 h-4 mr-2" />
+                    บันทึก
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Bible Verse Dialog */}
+        <Dialog open={!!editingBibleVerse} onOpenChange={() => setEditingBibleVerse(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>แก้ไขพระคัมภีร์ประจำวัน</DialogTitle>
+            </DialogHeader>
+            {editingBibleVerse && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>หนังสือ</Label>
+                    <Input 
+                      defaultValue={editingBibleVerse.book}
+                      onChange={(e) => setEditingBibleVerse({
+                        ...editingBibleVerse,
+                        book: e.target.value
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <Label>บท</Label>
+                    <Input 
+                      type="number"
+                      defaultValue={editingBibleVerse.chapter}
+                      onChange={(e) => setEditingBibleVerse({
+                        ...editingBibleVerse,
+                        chapter: parseInt(e.target.value)
+                      })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>ข้อเริ่มต้น</Label>
+                    <Input 
+                      type="number"
+                      defaultValue={editingBibleVerse.verse_start}
+                      onChange={(e) => setEditingBibleVerse({
+                        ...editingBibleVerse,
+                        verse_start: parseInt(e.target.value)
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <Label>ข้อสิ้นสุด (ถ้ามี)</Label>
+                    <Input 
+                      type="number"
+                      defaultValue={editingBibleVerse.verse_end || ''}
+                      onChange={(e) => setEditingBibleVerse({
+                        ...editingBibleVerse,
+                        verse_end: e.target.value ? parseInt(e.target.value) : null
+                      })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>เนื้อหาภาษาอังกฤษ</Label>
+                  <Textarea 
+                    defaultValue={editingBibleVerse.content}
+                    onChange={(e) => setEditingBibleVerse({
+                      ...editingBibleVerse,
+                      content: e.target.value
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label>เนื้อหาภาษาไทย</Label>
+                  <Textarea 
+                    defaultValue={editingBibleVerse.content_thai || ''}
+                    onChange={(e) => setEditingBibleVerse({
+                      ...editingBibleVerse,
+                      content_thai: e.target.value
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label>วันอ่าน</Label>
+                  <Input 
+                    type="number"
+                    defaultValue={editingBibleVerse.reading_day}
+                    onChange={(e) => setEditingBibleVerse({
+                      ...editingBibleVerse,
+                      reading_day: parseInt(e.target.value)
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label>คำอธิบายภาษาอังกฤษ</Label>
+                  <Textarea 
+                    defaultValue={editingBibleVerse.explanation || ''}
+                    onChange={(e) => setEditingBibleVerse({
+                      ...editingBibleVerse,
+                      explanation: e.target.value
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label>คำอธิบายภาษาไทย</Label>
+                  <Textarea 
+                    defaultValue={editingBibleVerse.explanation_thai || ''}
+                    onChange={(e) => setEditingBibleVerse({
+                      ...editingBibleVerse,
+                      explanation_thai: e.target.value
+                    })}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditingBibleVerse(null)}>
+                    <X className="w-4 h-4 mr-2" />
+                    ยกเลิก
+                  </Button>
+                  <Button onClick={() => handleEditBibleVerse(editingBibleVerse.id, editingBibleVerse)}>
+                    <Save className="w-4 h-4 mr-2" />
+                    บันทึก
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Care Group Dialog */}
+        <Dialog open={!!editingCareGroup} onOpenChange={() => setEditingCareGroup(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>แก้ไขกลุ่มดูแล</DialogTitle>
+            </DialogHeader>
+            {editingCareGroup && (
+              <div className="space-y-4">
+                <div>
+                  <Label>ชื่อกลุ่ม</Label>
+                  <Input 
+                    defaultValue={editingCareGroup.name}
+                    onChange={(e) => setEditingCareGroup({
+                      ...editingCareGroup,
+                      name: e.target.value
+                    })}
+                  />
+                </div>
+                <div>
+                  <Label>คำอธิบาย</Label>
+                  <Textarea 
+                    defaultValue={editingCareGroup.description}
+                    onChange={(e) => setEditingCareGroup({
+                      ...editingCareGroup,
+                      description: e.target.value
+                    })}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditingCareGroup(null)}>
+                    <X className="w-4 h-4 mr-2" />
+                    ยกเลิก
+                  </Button>
+                  <Button onClick={() => handleEditCareGroup(editingCareGroup.id, editingCareGroup)}>
+                    <Save className="w-4 h-4 mr-2" />
+                    บันทึก
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
