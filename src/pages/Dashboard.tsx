@@ -28,7 +28,6 @@ import { useToast } from "@/hooks/use-toast";
 import PrayerCard from "@/components/PrayerCard";
 import DailyBibleVerse from "@/components/DailyBibleVerse";
 import PrayerStats from "@/components/PrayerStats";
-import QuickPrayer from "@/components/QuickPrayer";
 
 interface Prayer {
   id: string;
@@ -351,11 +350,6 @@ const Dashboard = () => {
         {/* Prayer Statistics */}
         <div className="mb-8">
           <PrayerStats />
-        </div>
-
-        {/* Quick Prayer */}
-        <div className="mb-8">
-          <QuickPrayer onPrayerCreated={handlePrayerUpdate} />
         </div>
 
         {/* Prayer Feed */}
