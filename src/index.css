@@ -371,4 +371,21 @@
   .nav-active-border {
     @apply border-yellow-500/20;
   }
+  
+  /* Submit button styles */
+  .btn-submit {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-lg;
+  }
+  
+  .btn-submit:disabled {
+    @apply bg-gray-400 cursor-not-allowed;
+  }
+  
+  .btn-submit-primary {
+    @apply bg-green-600 hover:bg-green-700 text-white font-medium shadow-lg;
+  }
+  
+  .btn-submit-success {
+    @apply bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-lg;
+  }
 }
