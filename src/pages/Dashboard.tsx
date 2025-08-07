@@ -64,8 +64,12 @@ const Dashboard = () => {
 
   // Fetch prayers from database
   const fetchPrayers = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user, skipping fetchPrayers');
+      return;
+    }
     
+    console.log('Fetching prayers for user:', user.id);
     setIsLoadingPrayers(true);
     try {
       const { data, error } = await supabase
@@ -82,14 +86,22 @@ const Dashboard = () => {
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (error) throw error;
+      console.log('Prayers fetch result:', { data, error });
+      if (error) {
+        console.error('Error fetching prayers:', error);
+        throw error;
+      }
       setPrayers(data || []);
     } catch (error: any) {
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถโหลดคำอธิษฐานได้",
-        variant: "destructive"
-      });
+      console.error('Error in fetchPrayers:', error);
+      // Don't show toast for network errors to avoid spam
+      if (error.code !== 'PGRST301' && error.code !== 'PGRST302') {
+        toast({
+          title: "เกิดข้อผิดพลาด",
+          description: "ไม่สามารถโหลดคำอธิษฐานได้",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoadingPrayers(false);
     }
@@ -97,15 +109,19 @@ const Dashboard = () => {
 
   // Auth state management
   useEffect(() => {
+    console.log('Setting up auth state listener');
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
         
         // Redirect to auth if no user
         if (!session?.user) {
+          console.log('No user found, redirecting to auth');
           navigate("/auth");
         }
       }
@@ -113,11 +129,13 @@ const Dashboard = () => {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.id);
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
       
       if (!session?.user) {
+        console.log('No initial session, redirecting to auth');
         navigate("/auth");
       }
     });
@@ -128,20 +146,26 @@ const Dashboard = () => {
   // Fetch prayers when user is available
   useEffect(() => {
     if (user) {
+      console.log('User available, fetching prayers');
       fetchPrayers();
     }
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id to prevent infinite loops
 
   // Refresh prayers every 30 seconds
   useEffect(() => {
     if (!user) return;
     
+    console.log('Setting up prayer refresh interval');
     const interval = setInterval(() => {
+      console.log('Refreshing prayers...');
       fetchPrayers();
     }, 30000); // 30 seconds
 
-    return () => clearInterval(interval);
-  }, [user]);
+    return () => {
+      console.log('Clearing prayer refresh interval');
+      clearInterval(interval);
+    };
+  }, [user?.id]); // Only depend on user.id to prevent infinite loops
 
   const handlePrayerUpdate = () => {
     fetchPrayers();
@@ -166,6 +190,37 @@ const Dashboard = () => {
             <Heart className="w-8 h-8 text-primary-foreground" />
           </div>
           <p className="text-muted-foreground">กำลังโหลด...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if there's an issue
+  if (!user && !isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-divine rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-divine">
+            <Heart className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <p className="text-muted-foreground mb-4">กรุณาเข้าสู่ระบบ</p>
+          <Button onClick={() => navigate("/auth")} variant="divine">
+            เข้าสู่ระบบ
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while fetching prayers
+  if (isLoadingPrayers && prayers.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-divine rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-divine animate-pulse">
+            <Heart className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <p className="text-muted-foreground">กำลังโหลดคำอธิษฐาน...</p>
         </div>
       </div>
     );
