@@ -18,7 +18,9 @@ import {
   Save,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  ArrowLeft,
+  Home
 } from "lucide-react";
 
 interface Profile {
@@ -237,9 +239,29 @@ const EditProfile = () => {
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <UserIcon className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl font-serif font-bold">แก้ไขโปรไฟล์</h1>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <UserIcon className="w-8 h-8 text-primary" />
+              <h1 className="text-3xl font-serif font-bold">แก้ไขโปรไฟล์</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2"
+              >
+                <Home className="w-4 h-4" />
+                กลับหน้าหลัก
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/profile')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                กลับโปรไฟล์
+              </Button>
+            </div>
           </div>
           <p className="text-muted-foreground">จัดการข้อมูลส่วนตัวและรหัสผ่าน</p>
         </div>
