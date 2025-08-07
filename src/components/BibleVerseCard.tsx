@@ -219,7 +219,11 @@ const BibleVerseCard = ({ date = new Date(), showControls = true }: BibleVerseCa
   const currentVerse = verses[currentIndex];
 
   return (
-    <Card className="bg-white border border-gray-200 shadow-lg overflow-hidden">
+    <Card className="bg-white border border-gray-200 shadow-lg overflow-hidden" style={{
+      '--tw-ring-offset-shadow': '0 0 #0000',
+      '--tw-ring-shadow': '0 0 #0000',
+      '--tw-shadow': 'var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)'
+    } as React.CSSProperties}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-gray-900">
