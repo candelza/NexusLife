@@ -803,8 +803,11 @@ const AdminSettings = () => {
   // Add user role function
   const handleAddUserRole = async (userId: string, role: 'admin' | 'moderator' | 'member') => {
     try {
+      console.log('Debug - handleAddUserRole called with:', { userId, role });
+      
       // Validate required fields
       if (!userId || !role) {
+        console.log('Debug - Validation failed:', { userId, role });
         toast({
           title: "ข้อมูลไม่ครบถ้วน",
           description: "กรุณาเลือกผู้ใช้และบทบาท",
@@ -814,6 +817,7 @@ const AdminSettings = () => {
       }
 
       // Check if user already has this role
+      console.log('Debug - Checking existing role for user:', userId, 'role:', role);
       const { data: existingRole, error: checkError } = await supabase
         .from('user_roles')
         .select('id')
@@ -821,11 +825,15 @@ const AdminSettings = () => {
         .eq('role', role)
         .single();
 
+      console.log('Debug - Existing role check result:', { existingRole, checkError });
+
       if (checkError && checkError.code !== 'PGRST116') {
+        console.log('Debug - Error checking existing role:', checkError);
         throw checkError;
       }
 
       if (existingRole) {
+        console.log('Debug - User already has this role');
         toast({
           title: "บทบาทซ้ำ",
           description: "ผู้ใช้นี้มีบทบาทนี้อยู่แล้ว",
@@ -834,6 +842,7 @@ const AdminSettings = () => {
         return;
       }
 
+      console.log('Debug - Inserting new role:', { userId, role, assigned_by: user?.id });
       const { error } = await supabase
         .from('user_roles')
         .insert({
@@ -842,6 +851,7 @@ const AdminSettings = () => {
           assigned_by: user?.id || null
         });
 
+      console.log('Debug - Insert result:', { error });
       if (error) throw error;
 
       toast({
@@ -1445,7 +1455,7 @@ const AdminSettings = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium">รายชื่อผู้ใช้ที่มีบทบาท</h3>
-                      <Dialog>
+                      <Dialog open={isAddRoleDialogOpen} onOpenChange={setIsAddRoleDialogOpen}>
                         <DialogTrigger asChild>
                           <Button size="sm">
                             <UserPlus className="w-4 h-4 mr-2" />
@@ -1459,7 +1469,7 @@ const AdminSettings = () => {
                           <div className="space-y-4">
                             <div>
                               <Label>เลือกสมาชิก</Label>
-                              <Select id="new-user-id">
+                              <Select value={newRoleUserId} onValueChange={setNewRoleUserId}>
                                 <SelectTrigger>
                                   <SelectValue placeholder="เลือกสมาชิกที่ต้องการเปลี่ยนบทบาท" />
                                 </SelectTrigger>
@@ -1476,7 +1486,7 @@ const AdminSettings = () => {
                             </div>
                             <div>
                               <Label>บทบาท</Label>
-                              <Select id="new-role">
+                              <Select value={newRoleType} onValueChange={(value: 'admin' | 'moderator' | 'member') => setNewRoleType(value)}>
                                 <SelectTrigger>
                                   <SelectValue placeholder="เลือกบทบาท" />
                                 </SelectTrigger>
@@ -1488,12 +1498,14 @@ const AdminSettings = () => {
                               </Select>
                             </div>
                             <div className="flex justify-end gap-2">
-                              <Button variant="outline">ยกเลิก</Button>
+                              <Button variant="outline" onClick={() => setIsAddRoleDialogOpen(false)}>
+                                ยกเลิก
+                              </Button>
                               <Button onClick={() => {
-                                const userId = (document.getElementById('new-user-id') as HTMLSelectElement)?.value;
-                                const role = (document.getElementById('new-role') as HTMLSelectElement)?.value as 'admin' | 'moderator' | 'member';
-                                if (userId && role) {
-                                  handleAddUserRole(userId, role);
+                                console.log('Debug - newRoleUserId:', newRoleUserId);
+                                console.log('Debug - newRoleType:', newRoleType);
+                                if (newRoleUserId && newRoleType) {
+                                  handleAddUserRole(newRoleUserId, newRoleType);
                                 } else {
                                   toast({
                                     title: "ข้อมูลไม่ครบถ้วน",
