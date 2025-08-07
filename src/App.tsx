@@ -15,7 +15,8 @@ import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import EditProfile from "./pages/EditProfile";
 import NotFound from "./pages/NotFound";
-import Debug from "./debug";
+import LineIntegration from "./pages/LineIntegration";
+
 import { ErrorBoundary } from "react-error-boundary";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const App = () => (
               <Route path="/groups" element={<MemberManagement />} />
               <Route path="/prayer/:id" element={<PrayerDetail />} />
               <Route path="/admin" element={<AdminSettings />} />
+              <Route path="/line" element={<LineIntegration />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
