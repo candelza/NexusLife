@@ -412,7 +412,7 @@ const Calendar = () => {
             <Card className="bg-card/60 backdrop-blur-sm border-border/50">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl font-serif">
+                  <CardTitle className="text-xl font-serif text-gray-900">
                     {format(viewDate, "MMMM yyyy")}
                   </CardTitle>
                   <div className="flex items-center gap-2">
@@ -444,7 +444,7 @@ const Calendar = () => {
               <CardContent>
                 <div className="grid grid-cols-7 gap-1 mb-4">
                   {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(day => (
-                    <div key={day} className="h-10 flex items-center justify-center text-sm font-medium text-muted-foreground">
+                    <div key={day} className="h-10 flex items-center justify-center text-sm font-medium text-gray-700">
                       {day}
                     </div>
                   ))}
@@ -465,15 +465,15 @@ const Calendar = () => {
                         key={day.toISOString()}
                         onClick={() => setSelectedDate(day)}
                         className={cn(
-                          "h-20 p-1 border border-border/20 rounded-lg transition-all duration-200 hover:bg-accent/50",
-                          !isCurrentMonth && "text-muted-foreground/50",
-                          isSelected && "bg-primary/10 border-primary/30",
-                          isCurrentDay && "bg-gradient-divine text-primary-foreground font-semibold"
+                          "h-20 p-1 border border-gray-200 rounded-lg transition-all duration-200 hover:bg-gray-50",
+                          !isCurrentMonth && "text-gray-400",
+                          isSelected && "bg-blue-100 border-blue-300",
+                          isCurrentDay && "bg-gradient-divine text-white font-semibold"
                         )}
                       >
                         <div className="h-full flex flex-col">
-                          <span className="text-sm">{format(day, 'd')}</span>
-                          <div className="flex-1 flex flex-col gap-1 mt-1">
+                          <span className="text-sm text-gray-900">{format(day, 'd')}</span>
+                          <div className="flex-1 flex flex-col gap-1 mt-1 bg-gray-100 rounded p-1">
                             {dayEvents.slice(0, 2).map(event => (
                               <div
                                 key={event.id}
@@ -484,7 +484,7 @@ const Calendar = () => {
                               />
                             ))}
                             {dayEvents.length > 2 && (
-                              <span className="text-xs text-muted-foreground">+{dayEvents.length - 2}</span>
+                              <span className="text-xs text-gray-600">+{dayEvents.length - 2}</span>
                             )}
                           </div>
                         </div>
