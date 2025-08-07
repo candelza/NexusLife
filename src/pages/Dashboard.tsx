@@ -18,7 +18,7 @@ import {
   User as UserIcon,
   MapPin
 } from "lucide-react";
-import heroImage from "@/assets/hero-prayer.jpg";
+import heroImage from "/hero-prayer.jpg";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from '@supabase/supabase-js';
 import { useToast } from "@/hooks/use-toast";

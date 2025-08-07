@@ -283,6 +283,31 @@ const AdminSettings = () => {
     }
   };
 
+  const handleUpdatePrayerStatus = async (prayerId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('prayers')
+        .update({ status: newStatus })
+        .eq('id', prayerId);
+
+      if (error) throw error;
+
+      toast({
+        title: "อัปเดตสถานะสำเร็จ",
+        description: `สถานะคำอธิษฐานได้รับการอัปเดตเป็น "${newStatus === 'answered' ? 'ได้รับการตอบ' : 'กำลังดำเนินการ'}"`,
+      });
+
+      fetchPrayers();
+    } catch (error: any) {
+      console.error('Error updating prayer status:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถอัปเดตสถานะได้",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleUpdateMemberLevel = async (memberId: string, level: string) => {
     try {
       const { error } = await supabase
@@ -615,15 +640,29 @@ const AdminSettings = () => {
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button variant="ghost" size="sm">
-                              <Trash2 className="w-4 h-4 text-red-500" />
+                              <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>ยืนยันการลบคำอธิษฐาน</DialogTitle>
+                              <DialogTitle>จัดการคำอธิษฐาน</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4">
-                              <p>คุณแน่ใจหรือไม่ที่จะลบคำอธิษฐานนี้? การกระทำนี้ไม่สามารถยกเลิกได้</p>
+                              <div>
+                                <Label>สถานะคำอธิษฐาน</Label>
+                                <Select 
+                                  value={prayer.status} 
+                                  onValueChange={(value) => handleUpdatePrayerStatus(prayer.id, value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending">กำลังดำเนินการ</SelectItem>
+                                    <SelectItem value="answered">ได้รับการตอบ</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                               <div className="flex justify-end gap-2">
                                 <Button variant="outline">ยกเลิก</Button>
                                 <Button 
