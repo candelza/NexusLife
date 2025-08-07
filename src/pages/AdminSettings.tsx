@@ -213,6 +213,7 @@ const AdminSettings = () => {
 
   const fetchMembers = async () => {
     try {
+      console.log('Debug - Fetching members...');
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -225,6 +226,7 @@ const AdminSettings = () => {
         `)
         .order('created_at', { ascending: false });
 
+      console.log('Debug - Members fetch result:', { data, error });
       if (error) throw error;
       setMembers(data || []);
     } catch (error) {
@@ -1474,6 +1476,7 @@ const AdminSettings = () => {
                                   <SelectValue placeholder="เลือกสมาชิกที่ต้องการเปลี่ยนบทบาท" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  {console.log('Debug - Rendering members:', members)}
                                   {members.map((member) => (
                                     <SelectItem key={member.id} value={member.id}>
                                       {member.display_name || 
