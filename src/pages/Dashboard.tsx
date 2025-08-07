@@ -275,13 +275,13 @@ const Dashboard = () => {
         <div className="absolute inset-0 flex items-center">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-2xl animate-fade-in-up">
-              <h1 className="text-3xl md:text-4xl lg:text-6xl font-serif font-bold text-white mb-4 leading-tight drop-shadow-lg">
+              <h1 className="text-3xl md:text-4xl lg:text-6xl font-serif font-bold text-gray-900 mb-4 leading-tight drop-shadow-lg">
                 รวมใจใน
-                <span className="block bg-gradient-to-r from-gray-300 to-gray-100 bg-clip-text text-transparent">
+                <span className="block bg-gradient-to-r from-gray-600 to-gray-400 bg-clip-text text-transparent">
                   การอธิษฐาน
                 </span>
               </h1>
-              <p className="text-lg md:text-xl text-gray-200 drop-shadow-md mb-6 md:mb-8 leading-relaxed">
+              <p className="text-lg md:text-xl text-gray-700 drop-shadow-md mb-6 md:mb-8 leading-relaxed">
                 เข้าร่วมชุมชนของเราในการยกชูซึ่งกันและกันผ่านการอธิษฐาน ความเชื่อ และการเป็นเพื่อนเคียง
               </p>
             </div>

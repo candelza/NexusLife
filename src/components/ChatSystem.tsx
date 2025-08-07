@@ -236,7 +236,7 @@ const ChatSystem = ({ groupId, groupName, isOpen, onClose }: ChatSystemProps) =>
                     }`}>
                       <div className={`px-3 py-2 rounded-lg max-w-xs lg:max-w-md ${
                         message.user_id === user?.id
-                          ? 'bg-blue-500 text-white'
+                                                       ? 'bg-blue-500 text-gray-100'
                           : 'bg-gray-100 text-gray-900'
                       }`}>
                         <p className="text-sm">{message.content}</p>

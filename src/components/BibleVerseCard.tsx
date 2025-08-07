@@ -304,7 +304,7 @@ const BibleVerseCard = ({ date = new Date(), showControls = true }: BibleVerseCa
               size="sm"
               onClick={markAsCompleted}
               disabled={isCompleted}
-              className="bg-gray-800 text-white hover:bg-gray-900"
+              className="bg-gray-800 text-gray-100 hover:bg-gray-900"
             >
               {isCompleted ? (
                 <>

@@ -308,7 +308,7 @@ const AdminPermissions = () => {
                       
                       <div>
                         <h3 className="font-medium">
-                          {user.profiles?.display_name || `${user.profiles?.first_name || ''} ${user.profiles?.last_name || ''}`.trim() || 'ไม่ระบุชื่อ'}
+                          {user.profiles?.display_name || `${user.profiles?.first_name || ''} ${user.profiles?.last_name || ''}`.trim() || user.email || 'ไม่มีข้อมูล'}
                         </h3>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
                         <p className="text-xs text-muted-foreground">

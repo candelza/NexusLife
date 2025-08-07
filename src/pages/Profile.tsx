@@ -190,28 +190,28 @@ const Profile = () => {
               <div className="relative">
                 <Avatar className="w-24 h-24 border-4 border-white/20 shadow-glow">
                   <AvatarImage src={profile?.avatar_url} alt={displayName} />
-                  <AvatarFallback className="text-2xl bg-white/20 text-primary-foreground">
+                  <AvatarFallback className="text-2xl bg-white/20 text-gray-100">
                     {displayName.split(' ').map((n: string) => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary-glow rounded-full flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-white" />
+                  <Shield className="w-4 h-4 text-gray-700" />
                 </div>
               </div>
               
               <div className="flex-1">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <h1 className="text-3xl font-serif font-bold mb-2">
+                    <h1 className="text-3xl font-serif font-bold mb-2 text-gray-900">
                       {displayName}
                     </h1>
                     <div className="flex flex-wrap items-center gap-3 mb-3">
-                      <Badge variant="secondary" className="bg-white/20 text-primary-foreground hover:bg-white/30">
+                      <Badge variant="secondary" className="bg-white/20 text-gray-100 hover:bg-white/30">
                         <Shield className="w-3 h-3 mr-1" />
                         สมาชิก
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-2 text-primary-foreground/80">
+                    <div className="flex items-center gap-2 text-gray-100/80">
                       <MapPin className="w-4 h-4" />
                       <span>{user?.email}</span>
                       <span className="mx-2">•</span>
@@ -226,7 +226,7 @@ const Profile = () => {
                   <Button 
                     variant="secondary" 
                     size="sm" 
-                    className="bg-white/20 text-primary-foreground hover:bg-white/30 border-white/30"
+                    className="bg-white/20 text-gray-100 hover:bg-white/30 border-white/30"
                     onClick={() => navigate('/profile/edit')}
                   >
                     <Edit3 className="w-4 h-4 mr-2" />

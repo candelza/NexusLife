@@ -1268,8 +1268,8 @@ const AdminSettings = () => {
                     <div key={prayer.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <div className="font-medium mb-1">{prayer.title}</div>
-                        <div className="text-sm text-muted-foreground mb-2">
-                                                        โดย {prayer.profile?.display_name || prayer.user_id || 'ไม่ระบุชื่อ'}
+                                                <div className="text-sm text-muted-foreground mb-2">
+                          โดย {prayer.profile?.display_name || prayer.user_id || 'ไม่มีข้อมูล'}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {new Date(prayer.created_at).toLocaleDateString('th-TH')}

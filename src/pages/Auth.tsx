@@ -190,7 +190,7 @@ const Auth = () => {
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-gradient-divine rounded-full flex items-center justify-center">
-                <Heart className="w-8 h-8 text-white" />
+                <Heart className="w-8 h-8 text-gray-700" />
               </div>
             </div>
             <CardTitle className="text-2xl font-serif">
@@ -335,7 +335,7 @@ const Auth = () => {
               ) : (
                 <Button 
                   type="submit" 
-                  className="w-full bg-gradient-peaceful hover:bg-gradient-peaceful/90 text-white" 
+                  className="w-full bg-gradient-peaceful hover:bg-gradient-peaceful/90 text-gray-900" 
                   disabled={isLoading}
                 >
                   {isLoading ? (

@@ -47,8 +47,8 @@ const MobileButton = ({
     secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
     ghost: "hover:bg-accent hover:text-accent-foreground",
     link: "text-primary underline-offset-4 hover:underline",
-    divine: "bg-gradient-divine text-white hover:shadow-divine",
-    peaceful: "bg-gradient-peaceful text-white hover:shadow-peaceful"
+    divine: "bg-gradient-divine text-gray-100 hover:shadow-divine",
+    peaceful: "bg-gradient-peaceful text-gray-900 hover:shadow-peaceful"
   };
 
   return (

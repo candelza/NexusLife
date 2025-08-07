@@ -257,7 +257,7 @@ const Navigation = () => {
         <div className="flex items-center justify-between px-4 py-3 bg-card/60 backdrop-blur-md border-b border-border/50">
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-divine rounded-lg flex items-center justify-center">
-              <Heart className="w-4 h-4 text-white" />
+                                  <Heart className="w-4 h-4 text-gray-700" />
             </div>
             <span className="font-serif font-semibold bg-gradient-divine bg-clip-text text-transparent">
               เน็กซัส
@@ -373,7 +373,7 @@ const Navigation = () => {
               <Link to="/new-prayer">
                 <div className="flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors">
                   <div className="w-10 h-10 bg-gradient-divine rounded-full flex items-center justify-center shadow-glow">
-                    <Plus className="w-5 h-5 text-white" />
+                    <Plus className="w-5 h-5 text-gray-100" />
                   </div>
                   <span className="text-xs font-medium text-primary">ใหม่</span>
                 </div>
