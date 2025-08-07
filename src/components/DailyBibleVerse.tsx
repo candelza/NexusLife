@@ -72,11 +72,11 @@ const DailyBibleVerse = () => {
 
   if (isLoading) {
     return (
-      <Card className="bg-gradient-divine text-primary-foreground border-0">
-        <CardContent className="p-6 text-center">
-          <div className="animate-pulse">กำลังโหลดพระคัมภีร์ประจำวัน...</div>
-        </CardContent>
-      </Card>
+          <Card className="bg-white border border-gray-200 shadow-lg">
+      <CardContent className="p-6 text-center">
+        <div className="animate-pulse text-gray-700">กำลังโหลดพระคัมภีร์ประจำวัน...</div>
+      </CardContent>
+    </Card>
     );
   }
 
@@ -85,17 +85,14 @@ const DailyBibleVerse = () => {
   }
 
   return (
-    <Card className="bg-gradient-divine text-primary-foreground border-0 overflow-hidden">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12" />
-      
+    <Card className="bg-white border border-gray-200 shadow-lg overflow-hidden">
       <CardHeader className="pb-4 relative">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Book className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-gray-900">
+            <Book className="w-5 h-5 text-purple-600" />
             พระคัมภีร์ประจำวัน
           </CardTitle>
-          <Badge variant="secondary" className="bg-white/20 text-primary-foreground">
+          <Badge variant="secondary" className="bg-purple-100 text-purple-800">
             {verse.book} {verse.chapter}:{verse.verse_start}
           </Badge>
         </div>
@@ -103,28 +100,28 @@ const DailyBibleVerse = () => {
 
       <CardContent className="relative">
         <div className="space-y-4">
-          <div className="text-lg leading-relaxed">
+          <div className="text-lg leading-relaxed text-gray-900">
             "{verse.content_thai || verse.content}"
           </div>
           
           {verse.explanation_thai && (
-            <div className="p-3 bg-white/10 rounded-lg">
-              <p className="text-sm opacity-90">{verse.explanation_thai}</p>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-700">{verse.explanation_thai}</p>
             </div>
           )}
           
-          <div className="flex items-center justify-between pt-4 border-t border-white/20">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
             <Button
               variant="secondary"
               size="sm"
               onClick={handleShare}
-              className="bg-white/20 text-primary-foreground hover:bg-white/30"
+              className="bg-purple-600 text-white hover:bg-purple-700"
             >
               <Share2 className="w-4 h-4 mr-2" />
               แชร์
             </Button>
             
-            <div className="flex items-center gap-2 text-sm opacity-80">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
               <Heart className="w-4 h-4" />
               <span>พระวจนะของพระเจ้า</span>
             </div>
