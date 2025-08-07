@@ -12,7 +12,8 @@ import {
   Settings,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Book
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,6 +81,8 @@ const Navigation = () => {
 
   const navItems = [
     { path: "/", label: "คำอธิษฐาน", icon: Heart },
+    { path: "/all-prayers", label: "คำอธิษฐานทั้งหมด", icon: Heart },
+    { path: "/bible-reading", label: "พระคัมภีร์", icon: Book },
     { path: "/groups", label: "กลุ่มดูแล", icon: Users },
     { path: "/calendar", label: "ปฏิทิน", icon: Calendar },
     { path: "/profile", label: "โปรไฟล์", icon: User },

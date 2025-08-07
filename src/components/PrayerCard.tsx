@@ -17,7 +17,8 @@ import {
   User as UserIcon,
   Send,
   ThumbsUp,
-  Trash2
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
 
 interface Prayer {
@@ -71,9 +72,45 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
   const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const { toast } = useToast();
 
+  // Validate prayer data
+  const validatePrayer = (prayer: Prayer): boolean => {
+    if (!prayer || !prayer.id || !prayer.title || !prayer.description) {
+      console.error('Invalid prayer data:', prayer);
+      return false;
+    }
+    return true;
+  };
+
+  // Safe date formatting
+  const formatDate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'ไม่ระบุวันที่';
+      }
+      return date.toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'ไม่ระบุวันที่';
+    }
+  };
+
   useEffect(() => {
+    // Validate prayer data first
+    if (!validatePrayer(prayer)) {
+      setHasError(true);
+      return;
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
@@ -93,9 +130,14 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
     fetchComments();
 
     return () => subscription.unsubscribe();
-  }, [prayer.id, fetchComments]);
+  }, [prayer.id]);
 
   const fetchComments = useCallback(async () => {
+    if (!prayer.id) {
+      console.error('No prayer ID provided');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('prayer_responses')
@@ -115,11 +157,15 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
         .eq('response_type', 'comment')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching comments:', error);
+        throw error;
+      }
       setComments(data || []);
       setCommentsCount(data?.length || 0);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching comments:', error);
+      // Don't show toast for comment errors to avoid spam
     }
   }, [prayer.id]);
 
@@ -161,6 +207,7 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
 
       onPrayerUpdate?.();
     } catch (error: unknown) {
+      console.error('Error handling like:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถกดไลค์ได้",
@@ -202,16 +249,20 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
 
       if (error) throw error;
 
+      setNewComment("");
+      setIsCommentDialogOpen(false);
+      
+      // Refresh comments
+      await fetchComments();
+      
+      onPrayerUpdate?.();
+
       toast({
         title: "ส่งความคิดเห็นสำเร็จ",
         description: "ความคิดเห็นของคุณได้ถูกส่งแล้ว",
       });
-
-      setNewComment("");
-      setIsCommentDialogOpen(false);
-      fetchComments();
-      onPrayerUpdate?.();
     } catch (error: unknown) {
+      console.error('Error submitting comment:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถส่งความคิดเห็นได้",
@@ -301,6 +352,20 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  // Show error state if prayer data is invalid
+  if (hasError || !validatePrayer(prayer)) {
+    return (
+      <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-sm">ไม่สามารถแสดงคำอธิษฐานได้</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="bg-card/60 backdrop-blur-sm border-border/50 hover:shadow-peaceful transition-all">
       <CardHeader className="pb-3">
@@ -317,13 +382,7 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
                 <span className="font-medium">{getDisplayName()}</span>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="w-3 h-3" />
-                  <span>{new Date(prayer.created_at).toLocaleDateString('th-TH', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}</span>
+                  <span>{formatDate(prayer.created_at)}</span>
                 </div>
               </div>
               {prayer.category && (
@@ -449,7 +508,7 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
                                   {comment.profile?.display_name || 'ผู้ใช้'}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  {new Date(comment.created_at).toLocaleDateString('th-TH')}
+                                  {formatDate(comment.created_at)}
                                 </span>
                               </div>
                               <p className="text-sm">{comment.content}</p>

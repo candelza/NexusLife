@@ -16,13 +16,19 @@ import {
   Share2,
   Clock,
   User as UserIcon,
-  MapPin
+  MapPin,
+  AlertTriangle,
+  RefreshCw,
+  Book
 } from "lucide-react";
 import heroImage from "/hero-prayer.jpg";
 import { supabase } from "@/integrations/supabase/client";
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { useToast } from "@/hooks/use-toast";
 import PrayerCard from "@/components/PrayerCard";
+import DailyBibleVerse from "@/components/DailyBibleVerse";
+import PrayerStats from "@/components/PrayerStats";
+import QuickPrayer from "@/components/QuickPrayer";
 
 interface Prayer {
   id: string;
@@ -48,6 +54,7 @@ interface Prayer {
 
 const quickActions = [
   { icon: Heart, label: "แบ่งปันคำอธิษฐาน", color: "text-pink-500" },
+  { icon: Book, label: "อ่านพระคัมภีร์", color: "text-purple-500" },
   { icon: Users, label: "เข้าร่วมกลุ่ม", color: "text-blue-500" },
   { icon: Calendar, label: "การประชุมอธิษฐาน", color: "text-green-500" },
 ];
@@ -59,10 +66,12 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [prayers, setPrayers] = useState<Prayer[]>([]);
   const [isLoadingPrayers, setIsLoadingPrayers] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Fetch prayers from database
+  // Fetch prayers from database with better error handling
   const fetchPrayers = async () => {
     if (!user) {
       console.log('No user, skipping fetchPrayers');
@@ -71,6 +80,9 @@ const Dashboard = () => {
     
     console.log('Fetching prayers for user:', user.id);
     setIsLoadingPrayers(true);
+    setHasError(false);
+    setErrorMessage("");
+    
     try {
       const { data, error } = await supabase
         .from('prayers')
@@ -87,18 +99,48 @@ const Dashboard = () => {
         .limit(20);
 
       console.log('Prayers fetch result:', { data, error });
+      
       if (error) {
         console.error('Error fetching prayers:', error);
         throw error;
       }
-      setPrayers(data || []);
+      
+      // Validate prayer data
+      const validPrayers = (data || []).filter(prayer => {
+        if (!prayer || !prayer.id || !prayer.title || !prayer.description) {
+          console.warn('Invalid prayer data found:', prayer);
+          return false;
+        }
+        return true;
+      });
+      
+      setPrayers(validPrayers);
+      
+      if (validPrayers.length !== (data || []).length) {
+        console.warn(`Filtered out ${(data || []).length - validPrayers.length} invalid prayers`);
+      }
+      
     } catch (error: any) {
       console.error('Error in fetchPrayers:', error);
+      setHasError(true);
+      
+      let errorMsg = "ไม่สามารถโหลดคำอธิษฐานได้";
+      
+      if (error?.code === 'PGRST301' || error?.code === 'PGRST302') {
+        errorMsg = "ปัญหาการเชื่อมต่อกับเซิร์ฟเวอร์";
+      } else if (error?.code === '42P01') {
+        errorMsg = "ตารางคำอธิษฐานไม่พบในฐานข้อมูล";
+      } else if (error?.message) {
+        errorMsg = error.message;
+      }
+      
+      setErrorMessage(errorMsg);
+      
       // Don't show toast for network errors to avoid spam
       if (error.code !== 'PGRST301' && error.code !== 'PGRST302') {
         toast({
           title: "เกิดข้อผิดพลาด",
-          description: "ไม่สามารถโหลดคำอธิษฐานได้",
+          description: errorMsg,
           variant: "destructive"
         });
       }
@@ -171,6 +213,12 @@ const Dashboard = () => {
     fetchPrayers();
   };
 
+  const handleRetry = () => {
+    setHasError(false);
+    setErrorMessage("");
+    fetchPrayers();
+  };
+
   const filteredPrayers = prayers.filter(prayer => {
     const searchLower = searchTerm.toLowerCase();
     const title = prayer.title || '';
@@ -212,20 +260,6 @@ const Dashboard = () => {
     );
   }
 
-  // Show loading state while fetching prayers
-  if (isLoadingPrayers && prayers.length === 0) {
-    return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-divine rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-divine animate-pulse">
-            <Heart className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <p className="text-muted-foreground">กำลังโหลดคำอธิษฐาน...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Hero Section */}
@@ -261,12 +295,19 @@ const Dashboard = () => {
 
       <div className="container mx-auto px-6 py-8">
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 -mt-16 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 -mt-16 relative z-10">
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-divine transition-all duration-300 hover:scale-105 cursor-pointer"
                 onClick={() => navigate("/new-prayer")}>
             <CardContent className="p-6 text-center">
               <Heart className="w-8 h-8 mx-auto mb-3 text-pink-500" />
               <h3 className="font-semibold">แบ่งปันคำอธิษฐาน</h3>
+            </CardContent>
+          </Card>
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-divine transition-all duration-300 hover:scale-105 cursor-pointer"
+                onClick={() => navigate("/bible-reading")}>
+            <CardContent className="p-6 text-center">
+              <Book className="w-8 h-8 mx-auto mb-3 text-purple-500" />
+              <h3 className="font-semibold">อ่านพระคัมภีร์</h3>
             </CardContent>
           </Card>
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-divine transition-all duration-300 hover:scale-105 cursor-pointer"
@@ -302,6 +343,21 @@ const Dashboard = () => {
           </Button>
         </div>
 
+        {/* Daily Bible Verse */}
+        <div className="mb-8">
+          <DailyBibleVerse />
+        </div>
+
+        {/* Prayer Statistics */}
+        <div className="mb-8">
+          <PrayerStats />
+        </div>
+
+        {/* Quick Prayer */}
+        <div className="mb-8">
+          <QuickPrayer onPrayerCreated={handlePrayerUpdate} />
+        </div>
+
         {/* Prayer Feed */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -311,11 +367,38 @@ const Dashboard = () => {
             </Badge>
           </div>
 
-          {isLoadingPrayers ? (
+          {/* Error State */}
+          {hasError && (
+            <Card className="bg-card/60 backdrop-blur-sm border-border/50">
+              <CardContent className="p-8 text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <AlertTriangle className="w-12 h-12 text-red-500" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">เกิดข้อผิดพลาด</h3>
+                <p className="text-muted-foreground mb-4">{errorMessage}</p>
+                <Button onClick={handleRetry} variant="outline" className="mr-2">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  ลองใหม่
+                </Button>
+                <Button onClick={() => navigate("/new-prayer")} variant="divine">
+                  สร้างคำอธิษฐานใหม่
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Loading State */}
+          {isLoadingPrayers && !hasError && (
             <div className="text-center py-8">
-              <div className="animate-pulse">กำลังโหลดคำอธิษฐาน...</div>
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+              <p className="text-muted-foreground">กำลังโหลดคำอธิษฐาน...</p>
             </div>
-          ) : filteredPrayers.length === 0 ? (
+          )}
+
+          {/* Empty State */}
+          {!isLoadingPrayers && !hasError && filteredPrayers.length === 0 && (
             <Card className="bg-card/60 backdrop-blur-sm border-border/50">
               <CardContent className="p-8 text-center">
                 <Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -326,7 +409,10 @@ const Dashboard = () => {
                 </Button>
               </CardContent>
             </Card>
-          ) : (
+          )}
+
+          {/* Prayer Cards */}
+          {!isLoadingPrayers && !hasError && filteredPrayers.length > 0 && (
             <div className="space-y-4">
               {filteredPrayers.map((prayer) => (
                 <PrayerCard 

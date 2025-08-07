@@ -1,0 +1,23 @@
+{
+  "name": "faith-nexus-hub-mockup-setup",
+  "version": "1.0.0",
+  "description": "Mockup data setup for Faith Nexus Hub",
+  "main": "run_mockup_setup.js",
+  "scripts": {
+    "setup": "node run_mockup_setup.js",
+    "setup:interactive": "node run_mockup_setup.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.53.0"
+  },
+  "keywords": [
+    "faith",
+    "nexus",
+    "hub",
+    "prayer",
+    "mockup",
+    "setup"
+  ],
+  "author": "Faith Nexus Hub Team",
+  "license": "MIT"
+}
