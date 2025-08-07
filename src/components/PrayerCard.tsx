@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -93,9 +93,9 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
     fetchComments();
 
     return () => subscription.unsubscribe();
-  }, [prayer.id]);
+  }, [prayer.id, fetchComments]);
 
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('prayer_responses')
@@ -121,7 +121,7 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
     } catch (error) {
       console.error('Error fetching comments:', error);
     }
-  };
+  }, [prayer.id]);
 
   const handleLike = async () => {
     if (!user) {
@@ -160,7 +160,7 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
       }
 
       onPrayerUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถกดไลค์ได้",
@@ -211,7 +211,7 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
       setIsCommentDialogOpen(false);
       fetchComments();
       onPrayerUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "เกิดข้อผิดพลาด",
         description: "ไม่สามารถส่งความคิดเห็นได้",
@@ -263,7 +263,7 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
       });
 
       onPrayerUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting prayer:', error);
       toast({
         title: "เกิดข้อผิดพลาด",

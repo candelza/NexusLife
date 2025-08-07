@@ -14,7 +14,7 @@ interface Notification {
   message: string;
   is_read: boolean;
   created_at: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 const NotificationBell = () => {

@@ -64,7 +64,7 @@ const EditProfile = () => {
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [navigate]);
 
   const checkAuth = async () => {
     try {
@@ -134,7 +134,7 @@ const EditProfile = () => {
       });
 
       await fetchProfile(user.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating profile:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
@@ -210,7 +210,7 @@ const EditProfile = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error changing password:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
