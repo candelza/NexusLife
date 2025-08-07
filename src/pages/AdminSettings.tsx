@@ -171,19 +171,36 @@ const AdminSettings = () => {
 
       setUser(user);
       
-      // Check if user is admin (candelaz28@gmail.com)
-      if (user.email === 'candelaz28@gmail.com') {
+      // Check if user has admin or moderator role
+      const { data: userRole, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .in('role', ['admin', 'moderator'])
+        .single();
+
+      if (roleError && roleError.code !== 'PGRST116') {
+        console.error('Error checking user role:', roleError);
+      }
+
+      if (userRole || user.email === 'candelaz28@gmail.com') {
         setIsAdmin(true);
         fetchMembers();
         fetchPrayers();
         fetchBibleVerses();
         fetchCareGroups();
         fetchUserRoles();
+        
+        addActivityLog(
+          "เข้าสู่ระบบ Admin", 
+          `ผู้ใช้ ${user.email} เข้าสู่ระบบ Admin`, 
+          'info'
+        );
       } else {
         setIsAdmin(false);
         toast({
           title: "ไม่มีสิทธิ์เข้าถึง",
-          description: "เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถเข้าถึงหน้านี้ได้",
+          description: "เฉพาะผู้ดูแลระบบและผู้ดูแลเท่านั้นที่สามารถเข้าถึงหน้านี้ได้",
           variant: "destructive"
         });
       }

@@ -1,239 +1,232 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { useNavigate } from 'react-router-dom';
-import { Camera } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from '@supabase/supabase-js';
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Save,
+  Lock,
+  Eye,
+  EyeOff
+} from "lucide-react";
+
+interface Profile {
+  id: string;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  bio: string | null;
+  location: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 const EditProfile = () => {
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Password change states
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  
+  // Profile form states
   const [formData, setFormData] = useState({
+    display_name: '',
     first_name: '',
     last_name: '',
-    display_name: '',
     bio: '',
-    phone: '',
     location: '',
-    avatar_url: '',
-    line_id: '',
+    phone: ''
   });
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
 
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not found.');
-        }
+    checkAuth();
+  }, []);
 
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching profile:', error);
-          throw error;
-        }
-
-        if (data) {
-          setProfile(data);
-          setFormData({
-            first_name: data.first_name || '',
-            last_name: data.last_name || '',
-            display_name: data.display_name || '',
-            bio: data.bio || '',
-            phone: data.phone || '',
-            location: data.location || '',
-            avatar_url: data.avatar_url || '',
-            line_id: data.line_id || '',
-          });
-          setPreviewUrl(data.avatar_url || '');
-        }
-      } catch (error: any) {
-        console.error('Error in fetchProfile:', error);
-        toast({
-          title: 'เกิดข้อผิดพลาดในการโหลดโปรไฟล์',
-          description: error.message || 'ไม่สามารถโหลดข้อมูลโปรไฟล์ได้',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [toast]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setAvatarFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-    }
-  };
-
-  const uploadAvatar = async (userId: string): Promise<string> => {
-    if (!avatarFile) return formData.avatar_url;
-
+  const checkAuth = async () => {
     try {
-      const fileExt = avatarFile.name.split('.').pop();
-      const fileName = `${userId}/${Date.now()}.${fileExt}`;
-
-      const { data, error: uploadError } = await supabase.storage
-        .from('profile-pictures')
-        .upload(fileName, avatarFile, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/auth");
+        return;
       }
 
-      const { data: urlData } = supabase.storage
-        .from('profile-pictures')
-        .getPublicUrl(data.path);
-
-      return urlData.publicUrl;
+      setUser(user);
+      await fetchProfile(user.id);
     } catch (error) {
-      console.error('Error uploading avatar:', error);
-      throw new Error('ไม่สามารถอัปโหลดรูปโปรไฟล์ได้');
+      console.error('Error checking auth:', error);
+      navigate("/auth");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const fetchProfile = async (userId: string) => {
     try {
-      setUploading(true);
-      
-      // Check if user is authenticated
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        console.error('Auth error:', authError);
-        throw new Error('ไม่พบผู้ใช้ กรุณาเข้าสู่ระบบใหม่');
-      }
-
-      console.log('Updating profile for user:', user.id);
-      console.log('Form data:', formData);
-      
-      // Validate form data
-      if (!formData.display_name.trim() && !formData.first_name.trim() && !formData.last_name.trim()) {
-        throw new Error('กรุณากรอกชื่อที่แสดง หรือชื่อและนามสกุล');
-      }
-
-      // Upload avatar if changed
-      let avatarUrl = formData.avatar_url;
-      if (avatarFile) {
-        console.log('Uploading new avatar...');
-        try {
-          avatarUrl = await uploadAvatar(user.id);
-          console.log('Avatar uploaded:', avatarUrl);
-        } catch (uploadError) {
-          console.error('Avatar upload failed:', uploadError);
-          // Continue without avatar upload if it fails
-        }
-      }
-      
-      // Prepare update data - only include fields that exist in the database
-      const updates: any = {
-        updated_at: new Date().toISOString()
-      };
-
-      // Only add fields if they have values
-      if (formData.first_name.trim()) updates.first_name = formData.first_name.trim();
-      if (formData.last_name.trim()) updates.last_name = formData.last_name.trim();
-      if (formData.display_name.trim()) updates.display_name = formData.display_name.trim();
-      if (formData.bio.trim()) updates.bio = formData.bio.trim();
-      if (formData.phone.trim()) updates.phone = formData.phone.trim();
-      if (formData.location.trim()) updates.location = formData.location.trim();
-      if (formData.line_id.trim()) updates.line_id = formData.line_id.trim();
-      if (avatarUrl) updates.avatar_url = avatarUrl;
-
-      console.log('Sending update with data:', updates);
-
-      // Update profile in database
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('Database update error:', updateError);
-        throw new Error(`ไม่สามารถอัปเดตโปรไฟล์: ${updateError.message}`);
-      }
-
-      console.log('Profile updated successfully');
-
-      // Verify the update was successful by fetching the updated profile
-      const { data: updatedProfile, error: verifyError } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
 
-      if (verifyError) {
-        console.error('Error verifying update:', verifyError);
-        throw new Error('ไม่สามารถยืนยันการอัปเดตได้');
-      }
+      if (error) throw error;
 
-      console.log('Profile update verified:', updatedProfile);
+      setProfile(data);
+      setFormData({
+        display_name: data.display_name || '',
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        bio: data.bio || '',
+        location: data.location || '',
+        phone: data.phone || ''
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          display_name: formData.display_name || null,
+          first_name: formData.first_name || null,
+          last_name: formData.last_name || null,
+          bio: formData.bio || null,
+          location: formData.location || null,
+          phone: formData.phone || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
 
       toast({
-        title: "อัปเดตโปรไฟล์สำเร็จ",
+        title: "บันทึกสำเร็จ",
         description: "ข้อมูลโปรไฟล์ได้รับการอัปเดตแล้ว",
       });
 
-      // Navigate back to profile page
-      navigate('/profile');
+      await fetchProfile(user.id);
     } catch (error: any) {
       console.error('Error updating profile:', error);
-      
-      // Show specific error messages based on error type
-      let errorMessage = "ไม่สามารถอัปเดตโปรไฟล์ได้ กรุณาลองใหม่อีกครั้ง";
-      
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (error.code === 'PGRST116') {
-        errorMessage = "ไม่พบโปรไฟล์ในฐานข้อมูล";
-      } else if (error.code === '23505') {
-        errorMessage = "ข้อมูลซ้ำกับที่มีอยู่แล้ว";
-      } else if (error.code === '23503') {
-        errorMessage = "ข้อมูลไม่ถูกต้อง";
-      }
-      
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: errorMessage,
-        variant: "destructive",
+        description: "ไม่สามารถบันทึกข้อมูลได้",
+        variant: "destructive"
       });
     } finally {
-      setUploading(false);
+      setIsSaving(false);
     }
   };
-  
-  if (loading) {
+
+  const handleChangePassword = async () => {
+    if (!user) return;
+
+    // Validate passwords
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({
+        title: "ข้อมูลไม่ครบถ้วน",
+        description: "กรุณากรอกข้อมูลให้ครบถ้วน",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "รหัสผ่านไม่ตรงกัน",
+        description: "รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "รหัสผ่านสั้นเกินไป",
+        description: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      // First verify current password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email!,
+        password: currentPassword
+      });
+
+      if (signInError) {
+        toast({
+          title: "รหัสผ่านปัจจุบันไม่ถูกต้อง",
+          description: "กรุณาตรวจสอบรหัสผ่านปัจจุบัน",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update password
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "เปลี่ยนรหัสผ่านสำเร็จ",
+        description: "รหัสผ่านได้รับการอัปเดตแล้ว",
+      });
+
+      // Reset form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถเปลี่ยนรหัสผ่านได้",
+        variant: "destructive"
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-pulse">กำลังโหลดโปรไฟล์...</div>
+          <div className="animate-pulse">กำลังโหลด...</div>
         </div>
       </div>
     );
@@ -241,141 +234,183 @@ const EditProfile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto p-4 max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">แก้ไขโปรไฟล์</CardTitle>
-          </CardHeader>
-          <form onSubmit={handleUpdateProfile}>
-            <CardContent className="space-y-6">
-              <div className="flex flex-col items-center space-y-4">
-                <Avatar className="w-24 h-24 border-4 border-white/20 shadow-glow">
-                  <AvatarImage src={previewUrl} />
-                  <AvatarFallback className="text-2xl bg-white/20 text-primary-foreground">
-                    {formData.display_name?.charAt(0) || formData.first_name?.charAt(0) || 'U'}
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <User className="w-8 h-8 text-primary" />
+            <h1 className="text-3xl font-serif font-bold">แก้ไขโปรไฟล์</h1>
+          </div>
+          <p className="text-muted-foreground">จัดการข้อมูลส่วนตัวและรหัสผ่าน</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Profile Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>ข้อมูลส่วนตัว</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 mb-6">
+                <Avatar className="w-20 h-20">
+                  <AvatarImage src={profile?.avatar_url} />
+                  <AvatarFallback>
+                    {profile?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <Label htmlFor="avatar-upload" className="cursor-pointer">
-                  <div className="flex items-center space-x-2 bg-primary text-primary-foreground px-3 py-2 rounded-md hover:bg-primary/90 transition-colors">
-                    <Camera className="w-4 h-4" />
-                    <span>เปลี่ยนรูปโปรไฟล์</span>
-                  </div>
+                <div>
+                  <div className="font-medium">{profile?.display_name || 'ไม่ระบุชื่อ'}</div>
+                  <div className="text-sm text-muted-foreground">{user?.email}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>ชื่อที่แสดง</Label>
                   <Input
-                    id="avatar-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="sr-only"
-                    disabled={uploading}
+                    value={formData.display_name}
+                    onChange={(e) => setFormData({...formData, display_name: e.target.value})}
+                    placeholder="ชื่อที่แสดง"
                   />
-                </Label>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">ชื่อ</Label>
-                  <Input 
-                    id="first_name" 
-                    value={formData.first_name} 
+                </div>
+                <div>
+                  <Label>ชื่อ</Label>
+                  <Input
+                    value={formData.first_name}
                     onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-                    disabled={uploading}
+                    placeholder="ชื่อ"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">นามสกุล</Label>
-                  <Input 
-                    id="last_name" 
-                    value={formData.last_name} 
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>นามสกุล</Label>
+                  <Input
+                    value={formData.last_name}
                     onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-                    disabled={uploading}
+                    placeholder="นามสกุล"
+                  />
+                </div>
+                <div>
+                  <Label>เบอร์โทรศัพท์</Label>
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    placeholder="เบอร์โทรศัพท์"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="display_name">ชื่อที่แสดง</Label>
-                <Input 
-                  id="display_name" 
-                  value={formData.display_name} 
-                  onChange={(e) => setFormData({...formData, display_name: e.target.value})}
-                  disabled={uploading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">เบอร์โทรศัพท์</Label>
-                <Input 
-                  id="phone" 
-                  value={formData.phone} 
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  disabled={uploading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location">ที่อยู่</Label>
-                <Input 
-                  id="location" 
-                  value={formData.location} 
+              <div>
+                <Label>ที่อยู่</Label>
+                <Input
+                  value={formData.location}
                   onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  disabled={uploading}
+                  placeholder="ที่อยู่"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="line_id">Line ID</Label>
-                <Input 
-                  id="line_id" 
-                  value={formData.line_id} 
-                  onChange={(e) => setFormData({...formData, line_id: e.target.value})}
-                  placeholder="เช่น @username หรือ user123"
-                  disabled={uploading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bio">เกี่ยวกับตัวเอง</Label>
-                <Textarea 
-                  id="bio" 
-                  value={formData.bio} 
+              <div>
+                <Label>ข้อมูลเพิ่มเติม</Label>
+                <Textarea
+                  value={formData.bio}
                   onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                  placeholder="ข้อมูลเพิ่มเติมเกี่ยวกับตัวคุณ"
                   rows={3}
-                  placeholder="บอกเล่าเกี่ยวกับตัวเอง..."
-                  disabled={uploading}
                 />
               </div>
+
+              <Button 
+                onClick={handleSaveProfile} 
+                disabled={isSaving}
+                className="w-full"
+              >
+                {isSaving ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
+              </Button>
             </CardContent>
-            <CardFooter className="flex justify-end space-x-2">
+          </Card>
+
+          {/* Change Password */}
+          <Card>
+            <CardHeader>
+              <CardTitle>เปลี่ยนรหัสผ่าน</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>รหัสผ่านปัจจุบัน</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="รหัสผ่านปัจจุบัน"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label>รหัสผ่านใหม่</Label>
+                <div className="relative">
+                  <Input
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="รหัสผ่านใหม่"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label>ยืนยันรหัสผ่านใหม่</Label>
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="ยืนยันรหัสผ่านใหม่"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+
               <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => navigate('/profile')}
-                disabled={uploading}
+                onClick={handleChangePassword} 
+                disabled={isChangingPassword}
+                className="w-full"
+                variant="outline"
               >
-                ยกเลิก
+                {isChangingPassword ? "กำลังเปลี่ยนรหัสผ่าน..." : "เปลี่ยนรหัสผ่าน"}
               </Button>
-              <Button 
-                type="submit" 
-                disabled={uploading}
-                className="bg-gradient-divine text-white hover:bg-gradient-divine/90"
-                onClick={() => {
-                  console.log('Save button clicked');
-                  console.log('Current form data:', formData);
-                  console.log('Avatar file:', avatarFile);
-                }}
-              >
-                {uploading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    กำลังบันทึก...
-                  </div>
-                ) : (
-                  "บันทึกการเปลี่ยนแปลง"
-                )}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
