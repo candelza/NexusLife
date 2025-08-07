@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from '@supabase/supabase-js';
 import { 
-  User, 
+  User as UserIcon, 
   Mail, 
   Phone, 
   MapPin, 
@@ -238,7 +238,7 @@ const EditProfile = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <User className="w-8 h-8 text-primary" />
+            <UserIcon className="w-8 h-8 text-primary" />
             <h1 className="text-3xl font-serif font-bold">แก้ไขโปรไฟล์</h1>
           </div>
           <p className="text-muted-foreground">จัดการข้อมูลส่วนตัวและรหัสผ่าน</p>
