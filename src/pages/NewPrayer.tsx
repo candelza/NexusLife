@@ -422,8 +422,7 @@ const NewPrayer = () => {
                   </Button>
                   <Button
                     type="submit"
-                    variant="divine"
-                    className="flex-1"
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (

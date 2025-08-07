@@ -111,8 +111,8 @@ const Navigation = () => {
               <img src="/logo.png" alt="Nexus Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-xl font-serif font-semibold bg-gradient-divine bg-clip-text text-transparent">
-                เน็กซัส
+              <h1 className="text-xl font-serif font-semibold text-black">
+                NexusLife
               </h1>
               <p className="text-xs text-muted-foreground">ชุมชนแห่งการอธิษฐาน</p>
             </div>
@@ -124,15 +124,24 @@ const Navigation = () => {
               return (
                 <Link key={item.path} to={item.path}>
                   <Button
-                    variant={isActive(item.path) ? "divine" : "ghost"}
+                    variant="ghost"
                     size="sm"
                     className={cn(
                       "h-9 px-3",
-                      isActive(item.path) && "shadow-divine"
+                      isActive(item.path) 
+                        ? "nav-active shadow-yellow-500/20" 
+                        : "hover:bg-accent"
                     )}
                   >
-                    <Icon className="w-4 h-4" />
-                    {item.label}
+                    <Icon className={cn(
+                      "w-4 h-4",
+                      isActive(item.path) ? "nav-active-icon" : ""
+                    )} />
+                    <span className={cn(
+                      isActive(item.path) ? "nav-active-text" : ""
+                    )}>
+                      {item.label}
+                    </span>
                   </Button>
                 </Link>
               );
@@ -174,8 +183,8 @@ const Navigation = () => {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-glow overflow-hidden">
               <img src="/logo.png" alt="Nexus Logo" className="w-full h-full object-cover" />
             </div>
-            <span className="font-serif font-semibold bg-gradient-divine bg-clip-text text-transparent">
-              เน็กซัส
+            <span className="font-serif font-semibold text-black">
+              NexusLife
             </span>
           </Link>
           
@@ -212,11 +221,21 @@ const Navigation = () => {
                           className="block"
                         >
                           <Button
-                            variant={isActive(item.path) ? "divine" : "ghost"}
-                            className="w-full justify-start"
+                            variant="ghost"
+                            className={cn(
+                              "w-full justify-start",
+                              isActive(item.path) ? "nav-active" : ""
+                            )}
                           >
-                            <Icon className="w-4 h-4 mr-3" />
-                            {item.label}
+                            <Icon className={cn(
+                              "w-4 h-4 mr-3",
+                              isActive(item.path) ? "nav-active-icon" : ""
+                            )} />
+                            <span className={cn(
+                              isActive(item.path) ? "nav-active-text" : ""
+                            )}>
+                              {item.label}
+                            </span>
                           </Button>
                         </Link>
                       );
@@ -259,8 +278,8 @@ const Navigation = () => {
             <div className="w-8 h-8 bg-gradient-divine rounded-lg flex items-center justify-center">
                                   <Heart className="w-4 h-4 text-gray-700" />
             </div>
-            <span className="font-serif font-semibold bg-gradient-divine bg-clip-text text-transparent">
-              เน็กซัส
+            <span className="font-serif font-semibold text-black">
+              NexusLife
             </span>
           </Link>
           
@@ -291,11 +310,21 @@ const Navigation = () => {
                           className="block"
                         >
                           <Button
-                            variant={isActive(item.path) ? "divine" : "ghost"}
-                            className="w-full justify-start"
+                            variant="ghost"
+                            className={cn(
+                              "w-full justify-start",
+                              isActive(item.path) ? "nav-active" : ""
+                            )}
                           >
-                            <Icon className="w-4 h-4 mr-3" />
-                            {item.label}
+                            <Icon className={cn(
+                              "w-4 h-4 mr-3",
+                              isActive(item.path) ? "nav-active-icon" : ""
+                            )} />
+                            <span className={cn(
+                              isActive(item.path) ? "nav-active-text" : ""
+                            )}>
+                              {item.label}
+                            </span>
                           </Button>
                         </Link>
                       );
@@ -350,16 +379,16 @@ const Navigation = () => {
                   <div className={cn(
                     "flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors",
                     isActive(item.path) 
-                      ? "bg-primary/10 text-primary" 
+                      ? "nav-active-bg nav-active-text" 
                       : "text-gray-600 hover:text-gray-900"
                   )}>
                     <Icon className={cn(
                       "w-5 h-5",
-                      isActive(item.path) ? "text-primary" : "text-gray-600"
+                      isActive(item.path) ? "nav-active-icon" : "text-gray-600"
                     )} />
                     <span className={cn(
                       "text-xs font-medium",
-                      isActive(item.path) ? "text-primary" : "text-gray-600"
+                      isActive(item.path) ? "nav-active-text" : "text-gray-600"
                     )}>
                       {item.label}
                     </span>
