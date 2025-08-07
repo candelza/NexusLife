@@ -37,21 +37,11 @@ import { Label } from "@/components/ui/label";
 
 interface Member {
   id: string;
-  email: string;
   created_at: string;
-  profile?: {
-    display_name: string | null;
-    first_name: string | null;
-    last_name: string | null;
-    avatar_url: string | null;
-    member_level?: string;
-  };
-  group_members?: {
-    role: string;
-    group: {
-      name: string;
-    };
-  }[];
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
 }
 
 interface Prayer {
@@ -135,7 +125,33 @@ const AdminSettings = () => {
   const [editingBibleVerse, setEditingBibleVerse] = useState<BibleVerse | null>(null);
   const [editingCareGroup, setEditingCareGroup] = useState<CareGroup | null>(null);
   
+  // Add role states
+  const [newRoleUserId, setNewRoleUserId] = useState('');
+  const [newRoleType, setNewRoleType] = useState<'admin' | 'moderator' | 'member'>('member');
+  const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
+  
+  // Activity log states
+  const [activityLog, setActivityLog] = useState<Array<{
+    id: string;
+    action: string;
+    details: string;
+    timestamp: Date;
+    type: 'success' | 'error' | 'info';
+  }>>([]);
+  
   const { toast } = useToast();
+
+  // Add activity to log
+  const addActivityLog = (action: string, details: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const newActivity = {
+      id: Date.now().toString(),
+      action,
+      details,
+      timestamp: new Date(),
+      type
+    };
+    setActivityLog(prev => [newActivity, ...prev.slice(0, 9)]); // Keep only last 10 activities
+  };
 
   useEffect(() => {
     checkAdminStatus();
@@ -188,12 +204,7 @@ const AdminSettings = () => {
           display_name,
           first_name,
           last_name,
-          avatar_url,
-          member_level,
-          group_members(
-            role,
-            group:care_groups(name)
-          )
+          avatar_url
         `)
         .order('created_at', { ascending: false });
 
@@ -290,6 +301,12 @@ const AdminSettings = () => {
         title: "ลบสมาชิกสำเร็จ",
         description: "สมาชิกได้ถูกลบออกจากระบบแล้ว",
       });
+      
+      addActivityLog(
+        "ลบสมาชิก", 
+        `ลบสมาชิก ID: ${memberId}`, 
+        'success'
+      );
 
       fetchMembers();
     } catch (error: any) {
@@ -426,6 +443,12 @@ const AdminSettings = () => {
         title: "เพิ่มพระคัมภีร์ประจำวันสำเร็จ",
         description: "พระคัมภีร์ประจำวันได้รับการเพิ่มแล้ว",
       });
+      
+      addActivityLog(
+        "เพิ่มพระคัมภีร์", 
+        `เพิ่ม ${newBibleVerse.book} ${newBibleVerse.chapter}:${newBibleVerse.verse_start}`, 
+        'success'
+      );
 
       setNewBibleVerse({ 
         book: '', 
@@ -474,6 +497,12 @@ const AdminSettings = () => {
         title: "เพิ่มกลุ่มดูแลสำเร็จ",
         description: "กลุ่มดูแลได้รับการเพิ่มแล้ว",
       });
+      
+      addActivityLog(
+        "เพิ่มกลุ่มดูแล", 
+        `เพิ่มกลุ่ม: ${newCareGroup.name}`, 
+        'success'
+      );
 
       setNewCareGroup({ name: '', description: '' });
       fetchCareGroups();
@@ -544,6 +573,12 @@ const AdminSettings = () => {
         title: "แก้ไขสมาชิกสำเร็จ",
         description: "ข้อมูลสมาชิกได้รับการอัปเดตแล้ว",
       });
+      
+      addActivityLog(
+        "แก้ไขสมาชิก", 
+        `แก้ไขข้อมูลสมาชิก ID: ${memberId}`, 
+        'success'
+      );
 
       setEditingMember(null);
       fetchMembers();
@@ -585,6 +620,12 @@ const AdminSettings = () => {
         title: "แก้ไขคำอธิษฐานสำเร็จ",
         description: "ข้อมูลคำอธิษฐานได้รับการอัปเดตแล้ว",
       });
+      
+      addActivityLog(
+        "แก้ไขคำอธิษฐาน", 
+        `แก้ไขคำอธิษฐาน: ${updatedData.title}`, 
+        'success'
+      );
 
       setEditingPrayer(null);
       fetchPrayers();
@@ -662,6 +703,12 @@ const AdminSettings = () => {
         title: "แก้ไขกลุ่มดูแลสำเร็จ",
         description: "ข้อมูลกลุ่มดูแลได้รับการอัปเดตแล้ว",
       });
+      
+      addActivityLog(
+        "แก้ไขกลุ่มดูแล", 
+        `แก้ไขกลุ่ม: ${updatedData.name}`, 
+        'success'
+      );
 
       setEditingCareGroup(null);
       fetchCareGroups();
@@ -749,6 +796,27 @@ const AdminSettings = () => {
         return;
       }
 
+      // Check if user already has this role
+      const { data: existingRole, error: checkError } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('role', role)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existingRole) {
+        toast({
+          title: "บทบาทซ้ำ",
+          description: "ผู้ใช้นี้มีบทบาทนี้อยู่แล้ว",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('user_roles')
         .insert({
@@ -763,7 +831,18 @@ const AdminSettings = () => {
         title: "เพิ่มบทบาทสำเร็จ",
         description: "บทบาทได้รับการเพิ่มแล้ว",
       });
+      
+      addActivityLog(
+        "เพิ่มบทบาท", 
+        `เพิ่มบทบาท ${role} ให้กับ User ID: ${userId}`, 
+        'success'
+      );
 
+      // Reset form
+      setNewRoleUserId('');
+      setNewRoleType('member');
+      setIsAddRoleDialogOpen(false);
+      
       fetchUserRoles();
     } catch (error: any) {
       console.error('Error adding user role:', error);
@@ -901,7 +980,7 @@ const AdminSettings = () => {
         </div>
 
         <Tabs defaultValue="members" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="members" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               สมาชิก
@@ -921,6 +1000,10 @@ const AdminSettings = () => {
             <TabsTrigger value="levels" className="flex items-center gap-2">
               <Crown className="w-4 h-4" />
               ระดับสมาชิก
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              ประวัติการทำงาน
             </TabsTrigger>
           </TabsList>
 
@@ -1358,11 +1441,21 @@ const AdminSettings = () => {
                           </DialogHeader>
                           <div className="space-y-4">
                             <div>
-                              <Label>User ID</Label>
-                              <Input 
-                                placeholder="ใส่ User ID ที่ต้องการเพิ่มบทบาท"
-                                id="new-user-id"
-                              />
+                              <Label>เลือกสมาชิก</Label>
+                              <Select id="new-user-id">
+                                <SelectTrigger>
+                                  <SelectValue placeholder="เลือกสมาชิกที่ต้องการเพิ่มบทบาท" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {members.map((member) => (
+                                    <SelectItem key={member.id} value={member.id}>
+                                      {member.display_name || 
+                                       `${member.first_name || ''} ${member.last_name || ''}`.trim() ||
+                                       'ไม่ระบุชื่อ'} (ID: {member.id})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div>
                               <Label>บทบาท</Label>
@@ -1380,10 +1473,16 @@ const AdminSettings = () => {
                             <div className="flex justify-end gap-2">
                               <Button variant="outline">ยกเลิก</Button>
                               <Button onClick={() => {
-                                const userId = (document.getElementById('new-user-id') as HTMLInputElement)?.value;
+                                const userId = (document.getElementById('new-user-id') as HTMLSelectElement)?.value;
                                 const role = (document.getElementById('new-role') as HTMLSelectElement)?.value as 'admin' | 'moderator' | 'member';
                                 if (userId && role) {
                                   handleAddUserRole(userId, role);
+                                } else {
+                                  toast({
+                                    title: "ข้อมูลไม่ครบถ้วน",
+                                    description: "กรุณาเลือกสมาชิกและบทบาท",
+                                    variant: "destructive"
+                                  });
                                 }
                               }}>
                                 เพิ่มบทบาท
@@ -1440,6 +1539,46 @@ const AdminSettings = () => {
                       ))}
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="activity" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>ประวัติการทำงานล่าสุด</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {activityLog.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      ยังไม่มีประวัติการทำงาน
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {activityLog.map((activity) => (
+                        <div 
+                          key={activity.id} 
+                          className={`p-3 border rounded-lg ${
+                            activity.type === 'success' ? 'border-green-200 bg-green-50' :
+                            activity.type === 'error' ? 'border-red-200 bg-red-50' :
+                            'border-blue-200 bg-blue-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium">{activity.action}</div>
+                              <div className="text-sm text-muted-foreground">{activity.details}</div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {activity.timestamp.toLocaleString('th-TH')}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
