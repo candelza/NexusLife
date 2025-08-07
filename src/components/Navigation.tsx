@@ -104,17 +104,17 @@ const Navigation = () => {
   return (
     <>
       {/* Desktop Navigation */}
-      <nav className="hidden lg:flex items-center justify-between px-6 py-4 bg-gradient-divine backdrop-blur-md border-b border-purple-200/50 sticky top-0 z-50">
+      <nav className="hidden lg:flex items-center justify-between px-6 py-4 bg-card/60 backdrop-blur-md border-b border-border/50 sticky top-0 z-50">
         <div className="flex items-center space-x-8">
           <Link to="/" className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-glow overflow-hidden">
               <img src="/logo.png" alt="Nexus Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-xl font-serif font-semibold text-white drop-shadow-lg">
+              <h1 className="text-xl font-serif font-semibold bg-gradient-divine bg-clip-text text-transparent">
                 เน็กซัส
               </h1>
-              <p className="text-xs text-gray-200 drop-shadow-md">ชุมชนแห่งการอธิษฐาน</p>
+              <p className="text-xs text-muted-foreground">ชุมชนแห่งการอธิษฐาน</p>
             </div>
           </Link>
           
@@ -169,12 +169,12 @@ const Navigation = () => {
 
       {/* Tablet Navigation */}
       <nav className="hidden md:flex lg:hidden">
-        <div className="flex items-center justify-between px-4 py-3 bg-gradient-divine backdrop-blur-md border-b border-purple-200/50 w-full">
+        <div className="flex items-center justify-between px-4 py-3 bg-card/60 backdrop-blur-md border-b border-border/50 w-full">
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-glow overflow-hidden">
               <img src="/logo.png" alt="Nexus Logo" className="w-full h-full object-cover" />
             </div>
-            <span className="font-serif font-semibold text-white">
+            <span className="font-serif font-semibold bg-gradient-divine bg-clip-text text-transparent">
               เน็กซัส
             </span>
           </Link>
