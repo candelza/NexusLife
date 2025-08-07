@@ -1,386 +1,507 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from '@supabase/supabase-js';
 import { 
   Heart, 
   MessageCircle, 
   Share2, 
+  Clock, 
   Send,
-  Facebook,
-  ExternalLink,
-  Clock,
-  User
+  ThumbsUp,
+  AlertTriangle,
+  Star,
+  BookOpen,
+  Users,
+  CheckCircle,
+  Prayer
 } from "lucide-react";
 
-interface Prayer {
-  id: string;
-  title: string;
-  description: string;
-  category?: string;
-  status: string;
-  is_urgent: boolean;
-  created_at: string;
-  user_id: string;
-  profiles?: {
-    display_name: string;
-    first_name: string;
-    last_name: string;
-    avatar_url: string;
-  };
-}
-
-interface Comment {
+interface PrayerResponse {
   id: string;
   content: string;
+  response_type: 'prayer' | 'comment' | 'testimony';
   created_at: string;
   user_id: string;
-  profiles: {
-    display_name: string;
-    first_name: string;
-    last_name: string;
-    avatar_url: string;
+  profile?: {
+    display_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
   };
 }
 
 interface PrayerInteractionCardProps {
-  prayer: Prayer;
+  prayerId: string;
+  onUpdate?: () => void;
 }
 
-const PrayerInteractionCard = ({ prayer }: PrayerInteractionCardProps) => {
-  const [likes, setLikes] = useState<number>(0);
-  const [isLiked, setIsLiked] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState('');
-  const [isCommenting, setIsCommenting] = useState(false);
-  const [showComments, setShowComments] = useState(false);
+const PrayerInteractionCard = ({ prayerId, onUpdate }: PrayerInteractionCardProps) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [responses, setResponses] = useState<PrayerResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newResponse, setNewResponse] = useState("");
+  const [responseType, setResponseType] = useState<'prayer' | 'comment' | 'testimony'>('prayer');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const fetchInteractions = async () => {
+  // Auth state management
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Fetch responses
+  const fetchResponses = useCallback(async () => {
+    if (!prayerId) return;
+
     try {
-      // Fetch likes count
-      const { count: likesCount } = await supabase
-        .from('prayer_likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('prayer_id', prayer.id);
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('prayer_responses')
+        .select(`
+          id,
+          content,
+          response_type,
+          created_at,
+          user_id,
+          profile:profiles!prayer_responses_user_id_fkey(
+            display_name,
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
+        .eq('prayer_id', prayerId)
+        .order('created_at', { ascending: false });
 
-      setLikes(likesCount || 0);
-
-      // Check if current user liked
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: userLike } = await supabase
-          .from('prayer_likes')
-          .select('id')
-          .eq('prayer_id', prayer.id)
-          .eq('user_id', user.id)
-          .single();
-
-        setIsLiked(!!userLike);
-      }
-
-      // Fetch comments with profile info separately
-      const { data: commentsData, error: commentsError } = await supabase
-        .from('prayer_comments')
-        .select('id, content, created_at, user_id')
-        .eq('prayer_id', prayer.id)
-        .order('created_at', { ascending: true });
-
-      if (commentsError) throw commentsError;
-
-      // Get profiles for comment users
-      if (commentsData && commentsData.length > 0) {
-        const userIds = commentsData.map(c => c.user_id);
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, display_name, first_name, last_name, avatar_url')
-          .in('id', userIds);
-
-        if (profilesError) throw profilesError;
-
-        const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
-        const commentsWithProfiles = commentsData.map(comment => ({
-          ...comment,
-          profiles: profilesMap.get(comment.user_id) || {
-            display_name: 'Unknown',
-            first_name: '',
-            last_name: '',
-            avatar_url: ''
-          }
-        }));
-        setComments(commentsWithProfiles);
-      } else {
-        setComments([]);
-      }
+      if (error) throw error;
+      setResponses(data || []);
     } catch (error) {
-      console.error('Error fetching interactions:', error);
-    }
-  };
-
-  const toggleLike = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "กรุณาเข้าสู่ระบบ",
-          description: "กรุณาเข้าสู่ระบบเพื่อกดไลค์",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (isLiked) {
-        const { error } = await supabase
-          .from('prayer_likes')
-          .delete()
-          .eq('prayer_id', prayer.id)
-          .eq('user_id', user.id);
-
-        if (error) throw error;
-        setLikes(prev => prev - 1);
-        setIsLiked(false);
-      } else {
-        const { error } = await supabase
-          .from('prayer_likes')
-          .insert({
-            prayer_id: prayer.id,
-            user_id: user.id
-          });
-
-        if (error) throw error;
-        setLikes(prev => prev + 1);
-        setIsLiked(true);
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error);
+      console.error('Error fetching responses:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถกดไลค์ได้",
-        variant: "destructive",
+        description: "ไม่สามารถโหลดการตอบสนองได้",
+        variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [prayerId, toast]);
 
-  const addComment = async () => {
-    if (!newComment.trim()) return;
+  useEffect(() => {
+    fetchResponses();
+  }, [fetchResponses]);
+
+  const handleSubmitResponse = async () => {
+    if (!user) {
+      toast({
+        title: "กรุณาเข้าสู่ระบบ",
+        description: "คุณต้องเข้าสู่ระบบก่อนแสดงความคิดเห็น",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!newResponse.trim()) {
+      toast({
+        title: "ข้อความไม่สามารถว่างได้",
+        description: "กรุณาใส่ข้อความก่อนส่ง",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
-      setIsCommenting(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "กรุณาเข้าสู่ระบบ",
-          description: "กรุณาเข้าสู่ระบบเพื่อแสดงความคิดเห็น",
-          variant: "destructive",
-        });
-        return;
-      }
-
       const { error } = await supabase
-        .from('prayer_comments')
+        .from('prayer_responses')
         .insert({
-          prayer_id: prayer.id,
+          prayer_id: prayerId,
           user_id: user.id,
-          content: newComment.trim()
+          content: newResponse.trim(),
+          response_type: responseType
         });
 
       if (error) throw error;
 
-      setNewComment('');
-      await fetchInteractions();
+      setNewResponse("");
+      setIsDialogOpen(false);
       
+      // Refresh responses
+      await fetchResponses();
+      
+      onUpdate?.();
+
+      const responseTypeText = {
+        prayer: "คำอธิษฐาน",
+        comment: "ความคิดเห็น",
+        testimony: "คำพยาน"
+      }[responseType];
+
       toast({
-        title: "แสดงความคิดเห็นสำเร็จ",
-        description: "ความคิดเห็นของคุณถูกเพิ่มแล้ว",
+        title: "ส่งสำเร็จ",
+        description: `${responseTypeText}ของคุณได้ถูกส่งแล้ว`,
       });
-    } catch (error) {
-      console.error('Error adding comment:', error);
+    } catch (error: any) {
+      console.error('Error submitting response:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถเพิ่มความคิดเห็นได้",
-        variant: "destructive",
+        description: "ไม่สามารถส่งข้อความได้",
+        variant: "destructive"
       });
     } finally {
-      setIsCommenting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const shareToFacebook = () => {
-    const url = window.location.href;
-    const text = `กรุณาร่วมอธิษฐานเพื่อ: ${prayer.title}`;
-    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`;
-    window.open(fbUrl, '_blank', 'width=600,height=400');
+  const formatDate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'ไม่ระบุวันที่';
+    }
   };
 
-  const shareToLine = () => {
-    const text = `กรุณาร่วมอธิษฐานเพื่อ: ${prayer.title}\n\n${prayer.description}`;
-    const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`;
-    window.open(lineUrl, '_blank', 'width=600,height=400');
+  const getResponseIcon = (type: string) => {
+    switch (type) {
+      case 'prayer':
+        return <Prayer className="w-4 h-4 text-blue-500" />;
+      case 'comment':
+        return <MessageCircle className="w-4 h-4 text-green-500" />;
+      case 'testimony':
+        return <Star className="w-4 h-4 text-yellow-500" />;
+      default:
+        return <MessageCircle className="w-4 h-4 text-gray-500" />;
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const getResponseColor = (type: string) => {
+    switch (type) {
+      case 'prayer':
+        return 'border-blue-200 bg-blue-50';
+      case 'comment':
+        return 'border-green-200 bg-green-50';
+      case 'testimony':
+        return 'border-yellow-200 bg-yellow-50';
+      default:
+        return 'border-gray-200 bg-gray-50';
+    }
   };
 
-  const getDisplayName = (profile: any) => {
-    return profile?.display_name || 
-           `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 
-           'ไม่ระบุชื่อ';
+  const getResponseTypeText = (type: string) => {
+    switch (type) {
+      case 'prayer':
+        return 'คำอธิษฐาน';
+      case 'comment':
+        return 'ความคิดเห็น';
+      case 'testimony':
+        return 'คำพยาน';
+      default:
+        return 'ข้อความ';
+    }
   };
 
-  useEffect(() => {
-    fetchInteractions();
-  }, [prayer.id]);
+  const prayerResponses = responses.filter(r => r.response_type === 'prayer');
+  const comments = responses.filter(r => r.response_type === 'comment');
+  const testimonies = responses.filter(r => r.response_type === 'testimony');
 
   return (
     <Card className="bg-card/60 backdrop-blur-sm border-border/50">
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarImage src={prayer.profiles?.avatar_url} />
-              <AvatarFallback>
-                <User className="w-4 h-4" />
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="font-medium">{getDisplayName(prayer.profiles)}</h3>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="w-3 h-3" />
-                <span>{formatDate(prayer.created_at)}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {prayer.is_urgent && (
-              <Badge variant="destructive">ด่วน</Badge>
-            )}
-            {prayer.category && (
-              <Badge variant="outline">{prayer.category}</Badge>
-            )}
-            <Badge variant={prayer.status === 'answered' ? 'default' : 'secondary'}>
-              {prayer.status === 'answered' ? 'ได้รับการตอบ' : 'กำลังอธิษฐาน'}
-            </Badge>
-          </div>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          การตอบสนองและคำพยาน
+          <Badge variant="secondary" className="ml-auto">
+            {responses.length} ข้อความ
+          </Badge>
+        </CardTitle>
       </CardHeader>
+      
+      <CardContent>
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="all">ทั้งหมด ({responses.length})</TabsTrigger>
+            <TabsTrigger value="prayers">คำอธิษฐาน ({prayerResponses.length})</TabsTrigger>
+            <TabsTrigger value="comments">ความคิดเห็น ({comments.length})</TabsTrigger>
+            <TabsTrigger value="testimonies">คำพยาน ({testimonies.length})</TabsTrigger>
+          </TabsList>
 
-      <CardContent className="space-y-4">
-        <div>
-          <h4 className="font-medium mb-2">{prayer.title}</h4>
-          <p className="text-muted-foreground">{prayer.description}</p>
-        </div>
-
-        {/* Interaction Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t border-border/50">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleLike}
-              className={`gap-2 ${isLiked ? 'text-red-500' : ''}`}
-            >
-              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-              <span>{likes}</span>
-            </Button>
-
-            <Dialog open={showComments} onOpenChange={setShowComments}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  <span>{comments.length}</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md max-h-[70vh] overflow-hidden flex flex-col">
-                <DialogHeader>
-                  <DialogTitle>ความคิดเห็น</DialogTitle>
-                </DialogHeader>
-                
-                <div className="flex-1 overflow-y-auto space-y-4">
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3">
+          <TabsContent value="all" className="space-y-4">
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-muted-foreground">กำลังโหลด...</p>
+              </div>
+            ) : responses.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>ยังไม่มีการตอบสนอง</p>
+                <p className="text-sm">เป็นคนแรกที่แสดงความคิดเห็นหรือคำพยาน</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {responses.map((response) => (
+                  <div
+                    key={response.id}
+                    className={`p-4 rounded-lg border ${getResponseColor(response.response_type)}`}
+                  >
+                    <div className="flex items-start gap-3">
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={comment.profiles?.avatar_url} />
-                        <AvatarFallback>
-                          {getDisplayName(comment.profiles).charAt(0)}
+                        <AvatarImage src={response.profile?.avatar_url} />
+                        <AvatarFallback className="text-xs">
+                          {response.profile?.display_name?.charAt(0) || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <div className="bg-muted p-3 rounded-lg">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium text-sm">
-                              {getDisplayName(comment.profiles)}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDate(comment.created_at)}
-                            </span>
-                          </div>
-                          <p className="text-sm">{comment.content}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium text-sm">
+                            {response.profile?.display_name || 'ผู้ใช้'}
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {getResponseTypeText(response.response_type)}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(response.created_at)}
+                          </span>
                         </div>
+                        <p className="text-sm whitespace-pre-wrap">{response.content}</p>
+                      </div>
+                      <div className="mt-1">
+                        {getResponseIcon(response.response_type)}
                       </div>
                     </div>
-                  ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
-                  {comments.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                      <p>ยังไม่มีความคิดเห็น</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t pt-4 space-y-3">
-                  <Textarea
-                    placeholder="เขียนความคิดเห็น..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    rows={3}
-                  />
-                  <Button 
-                    onClick={addComment} 
-                    disabled={!newComment.trim() || isCommenting}
-                    className="w-full"
+          <TabsContent value="prayers" className="space-y-4">
+            {prayerResponses.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Prayer className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>ยังไม่มีคำอธิษฐาน</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {prayerResponses.map((response) => (
+                  <div
+                    key={response.id}
+                    className="p-4 rounded-lg border border-blue-200 bg-blue-50"
                   >
-                    <Send className="w-4 h-4 mr-2" />
-                    {isCommenting ? 'กำลังส่ง...' : 'ส่งความคิดเห็น'}
+                    <div className="flex items-start gap-3">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={response.profile?.avatar_url} />
+                        <AvatarFallback className="text-xs">
+                          {response.profile?.display_name?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium text-sm">
+                            {response.profile?.display_name || 'ผู้ใช้'}
+                          </span>
+                          <Badge variant="outline" className="text-xs bg-blue-100">
+                            คำอธิษฐาน
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(response.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{response.content}</p>
+                      </div>
+                      <Prayer className="w-4 h-4 text-blue-500 mt-1" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="comments" className="space-y-4">
+            {comments.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>ยังไม่มีความคิดเห็น</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {comments.map((response) => (
+                  <div
+                    key={response.id}
+                    className="p-4 rounded-lg border border-green-200 bg-green-50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={response.profile?.avatar_url} />
+                        <AvatarFallback className="text-xs">
+                          {response.profile?.display_name?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium text-sm">
+                            {response.profile?.display_name || 'ผู้ใช้'}
+                          </span>
+                          <Badge variant="outline" className="text-xs bg-green-100">
+                            ความคิดเห็น
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(response.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{response.content}</p>
+                      </div>
+                      <MessageCircle className="w-4 h-4 text-green-500 mt-1" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="testimonies" className="space-y-4">
+            {testimonies.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Star className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>ยังไม่มีคำพยาน</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {testimonies.map((response) => (
+                  <div
+                    key={response.id}
+                    className="p-4 rounded-lg border border-yellow-200 bg-yellow-50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={response.profile?.avatar_url} />
+                        <AvatarFallback className="text-xs">
+                          {response.profile?.display_name?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium text-sm">
+                            {response.profile?.display_name || 'ผู้ใช้'}
+                          </span>
+                          <Badge variant="outline" className="text-xs bg-yellow-100">
+                            คำพยาน
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(response.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{response.content}</p>
+                      </div>
+                      <Star className="w-4 h-4 text-yellow-500 mt-1" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Add Response Button */}
+        <div className="mt-6 pt-4 border-t border-border/50">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full" variant="outline">
+                <MessageCircle className="w-4 h-4 mr-2" />
+                เพิ่มการตอบสนอง
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>เพิ่มการตอบสนอง</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">ประเภทการตอบสนอง</label>
+                  <Select value={responseType} onValueChange={(value: any) => setResponseType(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="prayer">คำอธิษฐาน</SelectItem>
+                      <SelectItem value="comment">ความคิดเห็น</SelectItem>
+                      <SelectItem value="testimony">คำพยาน</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">ข้อความ</label>
+                  <Textarea
+                    placeholder={
+                      responseType === 'prayer' ? "เขียนคำอธิษฐานของคุณ..." :
+                      responseType === 'comment' ? "เขียนความคิดเห็นของคุณ..." :
+                      "เขียนคำพยานของคุณ..."
+                    }
+                    value={newResponse}
+                    onChange={(e) => setNewResponse(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                    className="flex-1"
+                  >
+                    ยกเลิก
+                  </Button>
+                  <Button
+                    onClick={handleSubmitResponse}
+                    disabled={isSubmitting}
+                    className="flex-1"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                        ส่ง...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        ส่ง
+                      </>
+                    )}
                   </Button>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={shareToFacebook}
-              className="gap-2"
-            >
-              <Facebook className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={shareToLine}
-              className="gap-2"
-            >
-              <Share2 className="w-4 h-4" />
-              LINE
-            </Button>
-          </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </CardContent>
     </Card>

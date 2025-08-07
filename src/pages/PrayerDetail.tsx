@@ -4,19 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from '@supabase/supabase-js';
+import PrayerInteractionCard from "@/components/PrayerInteractionCard";
 import { 
   Heart, 
   MessageCircle, 
   Share2, 
   Clock, 
   ArrowLeft,
-  Send,
-  Facebook
+  Facebook,
+  AlertTriangle,
+  CheckCircle,
+  Users
 } from "lucide-react";
 
 interface Prayer {
@@ -38,32 +39,16 @@ interface Prayer {
   };
 }
 
-interface Comment {
-  id: string;
-  content: string;
-  created_at: string;
-  user_id: string;
-  profile?: {
-    display_name: string | null;
-    first_name: string | null;
-    last_name: string | null;
-    avatar_url: string | null;
-  };
-}
-
 const PrayerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [prayer, setPrayer] = useState<Prayer | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
-  const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
-  const [newComment, setNewComment] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -78,7 +63,6 @@ const PrayerDetail = () => {
 
     if (id) {
       fetchPrayer();
-      fetchComments();
       checkUserLike();
     }
 
@@ -87,6 +71,9 @@ const PrayerDetail = () => {
 
   const fetchPrayer = async () => {
     try {
+      setIsLoading(true);
+      setHasError(false);
+
       const { data, error } = await supabase
         .from('prayers')
         .select(`
@@ -103,43 +90,25 @@ const PrayerDetail = () => {
 
       if (error) throw error;
       setPrayer(data);
+
+      // Fetch likes count
+      const { count: likesCount } = await supabase
+        .from('prayer_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('prayer_id', id);
+
+      setLikesCount(likesCount || 0);
+
     } catch (error) {
       console.error('Error fetching prayer:', error);
+      setHasError(true);
       toast({
         title: "ไม่พบคำอธิษฐาน",
         description: "คำอธิษฐานที่คุณค้นหาอาจถูกลบหรือไม่สามารถเข้าถึงได้",
         variant: "destructive"
       });
-      navigate("/");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchComments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('prayer_responses')
-        .select(`
-          id,
-          content,
-          created_at,
-          user_id,
-          profile:profiles!prayer_responses_user_id_fkey(
-            display_name,
-            first_name,
-            last_name,
-            avatar_url
-          )
-        `)
-        .eq('prayer_id', id)
-        .eq('response_type', 'comment')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setComments(data || []);
-    } catch (error) {
-      console.error('Error fetching comments:', error);
     }
   };
 
@@ -206,61 +175,11 @@ const PrayerDetail = () => {
     }
   };
 
-  const handleComment = async () => {
-    if (!user) {
-      toast({
-        title: "กรุณาเข้าสู่ระบบ",
-        description: "คุณต้องเข้าสู่ระบบก่อนแสดงความคิดเห็น",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!newComment.trim()) {
-      toast({
-        title: "ข้อความไม่สามารถว่างได้",
-        description: "กรุณาใส่ข้อความก่อนส่ง",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const { error } = await supabase
-        .from('prayer_responses')
-        .insert({
-          prayer_id: id,
-          user_id: user.id,
-          content: newComment.trim(),
-          response_type: 'comment'
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "ส่งความคิดเห็นสำเร็จ",
-        description: "ความคิดเห็นของคุณได้ถูกส่งแล้ว",
-      });
-
-      setNewComment("");
-      setIsCommentDialogOpen(false);
-      fetchComments();
-    } catch (error: any) {
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถส่งความคิดเห็นได้",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleShare = () => {
+    if (!prayer) return;
+    
     const shareUrl = `${window.location.origin}/prayer/${id}`;
-    const shareText = `คำอธิษฐาน: ${prayer?.title}`;
+    const shareText = `คำอธิษฐาน: ${prayer.title}`;
     
     // Facebook share
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
@@ -290,21 +209,46 @@ const PrayerDetail = () => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  const formatDate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'ไม่ระบุวันที่';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-pulse">กำลังโหลด...</div>
+          <div className="w-16 h-16 bg-gradient-divine rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-divine animate-pulse">
+            <Heart className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <p className="text-muted-foreground">กำลังโหลด...</p>
         </div>
       </div>
     );
   }
 
-  if (!prayer) {
+  if (hasError || !prayer) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-pulse">ไม่พบคำอธิษฐาน</div>
+          <div className="w-16 h-16 bg-gradient-divine rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-divine">
+            <AlertTriangle className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">ไม่พบคำอธิษฐาน</h2>
+          <p className="text-muted-foreground mb-4">คำอธิษฐานที่คุณค้นหาอาจถูกลบหรือไม่สามารถเข้าถึงได้</p>
+          <Button onClick={() => navigate("/")} variant="divine">
+            กลับหน้าหลัก
+          </Button>
         </div>
       </div>
     );
@@ -324,7 +268,8 @@ const PrayerDetail = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Prayer Card */}
           <Card className="bg-card/60 backdrop-blur-sm border-border/50 shadow-peaceful">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -340,13 +285,7 @@ const PrayerDetail = () => {
                       <span className="font-medium">{getDisplayName()}</span>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />
-                        <span>{new Date(prayer.created_at).toLocaleDateString('th-TH', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}</span>
+                        <span>{formatDate(prayer.created_at)}</span>
                       </div>
                     </div>
                     {prayer.category && (
@@ -399,89 +338,10 @@ const PrayerDetail = () => {
                       <span>ไลค์ ({likesCount})</span>
                     </Button>
                     
-                    <Dialog open={isCommentDialogOpen} onOpenChange={setIsCommentDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex items-center gap-2 text-muted-foreground"
-                        >
-                          <MessageCircle className="w-5 h-5" />
-                          <span>ความคิดเห็น ({comments.length})</span>
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>แสดงความคิดเห็น</DialogTitle>
-                        </DialogHeader>
-                        
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Textarea
-                              placeholder="เขียนความคิดเห็นของคุณ..."
-                              value={newComment}
-                              onChange={(e) => setNewComment(e.target.value)}
-                              rows={3}
-                            />
-                          </div>
-                          
-                          {/* Comments list */}
-                          {comments.length > 0 && (
-                            <div className="space-y-3 max-h-60 overflow-y-auto">
-                              <h4 className="font-medium text-sm">ความคิดเห็นล่าสุด</h4>
-                              {comments.map((comment) => (
-                                <div key={comment.id} className="flex gap-2 p-2 bg-muted/30 rounded-lg">
-                                  <Avatar className="w-6 h-6">
-                                    <AvatarImage src={comment.profile?.avatar_url} />
-                                    <AvatarFallback className="text-xs">
-                                      {comment.profile?.display_name?.charAt(0) || 'U'}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span className="text-sm font-medium">
-                                        {comment.profile?.display_name || 'ผู้ใช้'}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {new Date(comment.created_at).toLocaleDateString('th-TH')}
-                                      </span>
-                                    </div>
-                                    <p className="text-sm">{comment.content}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              onClick={() => setIsCommentDialogOpen(false)}
-                              className="flex-1"
-                            >
-                              ยกเลิก
-                            </Button>
-                            <Button
-                              onClick={handleComment}
-                              disabled={isSubmitting}
-                              className="flex-1"
-                            >
-                              {isSubmitting ? (
-                                <>
-                                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
-                                  ส่ง...
-                                </>
-                              ) : (
-                                <>
-                                  <Send className="w-4 h-4 mr-2" />
-                                  ส่ง
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span>ชุมชน</span>
+                    </div>
                   </div>
                   
                   <Button
@@ -497,6 +357,17 @@ const PrayerDetail = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Enhanced Interaction Card */}
+          {id && (
+            <PrayerInteractionCard 
+              prayerId={id}
+              onUpdate={() => {
+                // Refresh prayer data if needed
+                fetchPrayer();
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

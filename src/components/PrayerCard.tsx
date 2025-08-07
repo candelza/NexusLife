@@ -14,7 +14,6 @@ import {
   MessageCircle, 
   Share2, 
   Clock, 
-  User as UserIcon,
   Send,
   ThumbsUp,
   Trash2,
@@ -356,7 +355,7 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
   if (hasError || !validatePrayer(prayer)) {
     return (
       <Card className="bg-card/60 backdrop-blur-sm border-border/50">
-        <CardContent className="p-4">
+        <CardContent className="p-3 md:p-4">
           <div className="flex items-center gap-2 text-muted-foreground">
             <AlertTriangle className="w-4 h-4" />
             <span className="text-sm">ไม่สามารถแสดงคำอธิษฐานได้</span>
@@ -370,19 +369,20 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
     <Card className="bg-card/60 backdrop-blur-sm border-border/50 hover:shadow-peaceful transition-all">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="w-10 h-10">
+          <div className="flex items-center gap-2 md:gap-3">
+            <Avatar className="w-8 h-8 md:w-10 md:h-10">
               <AvatarImage src={prayer.is_anonymous ? undefined : prayer.profile?.avatar_url} />
               <AvatarFallback className={prayer.is_anonymous ? "bg-muted" : ""}>
                 {getDisplayInitials()}
               </AvatarFallback>
             </Avatar>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{getDisplayName()}</span>
+              <div className="flex items-center gap-1 md:gap-2">
+                <span className="font-medium text-sm md:text-base">{getDisplayName()}</span>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="w-3 h-3" />
-                  <span>{formatDate(prayer.created_at)}</span>
+                  <span className="hidden sm:inline">{formatDate(prayer.created_at)}</span>
+                  <span className="sm:hidden">{new Date(prayer.created_at).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}</span>
                 </div>
               </div>
               {prayer.category && (
@@ -440,20 +440,20 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
       </CardHeader>
       
       <CardContent className="pt-0">
-        <div className="space-y-3">
+        <div className="space-y-3 md:space-y-3">
           <div>
             <h4 
-              className="font-semibold text-lg mb-2 cursor-pointer hover:text-primary transition-colors"
+              className="font-semibold text-base md:text-lg mb-2 cursor-pointer hover:text-primary transition-colors line-clamp-2"
               onClick={() => navigate(`/prayer/${prayer.id}`)}
             >
               {prayer.title}
             </h4>
-            <p className="text-muted-foreground whitespace-pre-wrap">{prayer.description}</p>
+            <p className="text-muted-foreground whitespace-pre-wrap text-sm md:text-base line-clamp-3">{prayer.description}</p>
           </div>
           
           {/* Action buttons */}
           <div className="flex items-center justify-between pt-3 border-t border-border/50">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               <Button
                 variant="ghost"
                 size="sm"
@@ -461,7 +461,8 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
                 className={`flex items-center gap-1 ${isLiked ? 'text-red-500' : 'text-muted-foreground'}`}
               >
                 <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                <span className="text-sm">{likesCount}</span>
+                <span className="text-sm hidden sm:inline">{likesCount}</span>
+                <span className="text-xs sm:hidden">{likesCount}</span>
               </Button>
               
               <Dialog open={isCommentDialogOpen} onOpenChange={setIsCommentDialogOpen}>
@@ -472,7 +473,8 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
                     className="flex items-center gap-1 text-muted-foreground"
                   >
                     <MessageCircle className="w-4 h-4" />
-                    <span className="text-sm">{commentsCount}</span>
+                    <span className="text-sm hidden sm:inline">{commentsCount}</span>
+                    <span className="text-xs sm:hidden">{commentsCount}</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
@@ -556,7 +558,7 @@ const PrayerCard = ({ prayer, onPrayerUpdate }: PrayerCardProps) => {
               className="flex items-center gap-1 text-muted-foreground"
             >
               <Share2 className="w-4 h-4" />
-              <span className="text-sm">แชร์</span>
+              <span className="text-sm hidden sm:inline">แชร์</span>
             </Button>
           </div>
         </div>

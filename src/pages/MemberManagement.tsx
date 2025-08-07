@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from '@supabase/supabase-js';
+import ChatSystem from "@/components/ChatSystem";
 import { 
   Users, 
   UserPlus, 
@@ -25,7 +26,8 @@ import {
   Edit,
   Trash2,
   Send,
-  AlertTriangle
+  AlertTriangle,
+  MessageCircle
 } from "lucide-react";
 
 interface Member {
@@ -71,6 +73,8 @@ const MemberManagement = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(null);
 
   // Fetch members from database
   const fetchMembers = async () => {
@@ -320,6 +324,60 @@ const MemberManagement = () => {
           </Card>
         </div>
 
+        {/* Care Groups with Chat */}
+        <Card className="mb-6 bg-card/60 backdrop-blur-sm border-border/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              กลุ่มดูแลของคุณ
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {careGroups.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>คุณยังไม่ได้เข้าร่วมกลุ่มดูแลใดๆ</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {careGroups.map((group) => (
+                  <Card key={group.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold">{group.name}</h3>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedGroup(group);
+                            setIsChatOpen(true);
+                          }}
+                          className="text-blue-500 hover:text-blue-600"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {group.description && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {group.description}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>
+                          {members.filter(m => m.care_group.id === group.id).length} สมาชิก
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          กลุ่มดูแล
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Search and Filter */}
         <Card className="mb-6 bg-card/60 backdrop-blur-sm border-border/50">
           <CardContent className="p-4">
@@ -449,6 +507,19 @@ const MemberManagement = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Chat System */}
+      {selectedGroup && (
+        <ChatSystem
+          groupId={selectedGroup.id}
+          groupName={selectedGroup.name}
+          isOpen={isChatOpen}
+          onClose={() => {
+            setIsChatOpen(false);
+            setSelectedGroup(null);
+          }}
+        />
+      )}
     </div>
   );
 };

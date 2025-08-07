@@ -45,21 +45,34 @@ const BibleVerseCard = ({ date = new Date(), showControls = true }: BibleVerseCa
     try {
       setIsLoading(true);
       
-      // Get 3 random verses for the day (using day as seed for consistency)
-      const { data, error } = await supabase
+      // First try to get verses for today's reading day
+      let { data, error } = await supabase
         .from('bible_verses')
         .select('*')
+        .eq('reading_day', currentDayOfYear)
         .limit(3);
 
       if (error) throw error;
 
-      // Simple pseudo-random selection based on date
-      const shuffled = data?.sort(() => {
-        const seed = currentDayOfYear;
-        return (seed % 3) - 1;
-      }) || [];
+      // If no verses for today, get random verses
+      if (!data || data.length === 0) {
+        const { data: randomData, error: randomError } = await supabase
+          .from('bible_verses')
+          .select('*')
+          .limit(10);
 
-      setVerses(shuffled.slice(0, 3));
+        if (randomError) throw randomError;
+
+        // Simple pseudo-random selection based on date
+        const shuffled = randomData?.sort(() => {
+          const seed = currentDayOfYear;
+          return (seed % 3) - 1;
+        }) || [];
+
+        data = shuffled.slice(0, 3);
+      }
+
+      setVerses(data || []);
       
       // Check if user has completed today's reading
       await checkReadingProgress();

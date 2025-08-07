@@ -42,6 +42,7 @@ interface Member {
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
+  email: string | null;
 }
 
 interface Prayer {
@@ -85,6 +86,7 @@ interface UserRole {
   role: 'admin' | 'moderator' | 'member';
   assigned_at: string;
   assigned_by: string | null;
+  email: string | null;
   profile?: {
     display_name: string | null;
     first_name: string | null;
@@ -251,7 +253,19 @@ const AdminSettings = () => {
 
       console.log('Debug - Members fetch result:', { data, error });
       if (error) throw error;
-      setMembers(data || []);
+      
+      // Get emails from auth.users for each profile
+      const membersWithEmails = await Promise.all(
+        (data || []).map(async (member) => {
+          const { data: authData } = await supabase.auth.admin.getUserById(member.id);
+          return {
+            ...member,
+            email: authData?.user?.email || null
+          };
+        })
+      );
+      
+      setMembers(membersWithEmails);
     } catch (error) {
       console.error('Error fetching members:', error);
     }
@@ -319,7 +333,19 @@ const AdminSettings = () => {
         .order('assigned_at', { ascending: false });
 
       if (error) throw error;
-      setUserRoles(data || []);
+      
+      // Get emails from auth.users for each user role
+      const userRolesWithEmails = await Promise.all(
+        (data || []).map(async (userRole) => {
+          const { data: authData } = await supabase.auth.admin.getUserById(userRole.user_id);
+          return {
+            ...userRole,
+            email: authData?.user?.email || null
+          };
+        })
+      );
+      
+      setUserRoles(userRolesWithEmails);
     } catch (error) {
       console.error('Error fetching user roles:', error);
     }
@@ -1592,7 +1618,7 @@ const AdminSettings = () => {
                               <SelectItem key={member.id} value={member.id}>
                                 {member.display_name || 
                                  `${member.first_name || ''} ${member.last_name || ''}`.trim() ||
-                                 member.email || 'ไม่ระบุชื่อ'} (ID: {member.id})
+                                 member.email || 'ไม่ระบุชื่อ'} ({member.email || 'ไม่มีอีเมล'})
                               </SelectItem>
                             ))}
                                 </SelectContent>
@@ -1643,7 +1669,7 @@ const AdminSettings = () => {
                               <div className="font-medium">
                                 {userRole.profile?.display_name || 
                                  `${userRole.profile?.first_name || ''} ${userRole.profile?.last_name || ''}`.trim() ||
-                                 userRole.user_id || 'ไม่ระบุชื่อ'}
+                                 userRole.email || 'ไม่ระบุชื่อ'}
                               </div>
                               <div className="text-sm text-muted-foreground">User ID: {userRole.user_id}</div>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">

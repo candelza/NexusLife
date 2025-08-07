@@ -18,6 +18,7 @@ import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BibleReadingDashboard from "./pages/BibleReadingDashboard";
 import AllPrayers from "./components/AllPrayers";
+import BibleVerseManager from "./components/BibleVerseManager";
 
 import Debug from "./debug";
 
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/prayer/:id" element={<PrayerDetail />} />
               <Route path="/admin" element={<AdminSettings />} />
               <Route path="/bible-reading" element={<BibleReadingDashboard />} />
+              <Route path="/bible-manager" element={<BibleVerseManager />} />
               <Route path="/all-prayers" element={<AllPrayers />} />
       
               <Route path="/auth" element={<Auth />} />
