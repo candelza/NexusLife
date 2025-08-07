@@ -111,10 +111,10 @@ const Navigation = () => {
               <img src="/logo.png" alt="Nexus Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-xl font-serif font-semibold text-white">
+              <h1 className="text-xl font-serif font-semibold text-white drop-shadow-lg">
                 เน็กซัส
               </h1>
-              <p className="text-xs text-white/80">ชุมชนแห่งการอธิษฐาน</p>
+              <p className="text-xs text-white drop-shadow-md">ชุมชนแห่งการอธิษฐาน</p>
             </div>
           </Link>
           
@@ -351,15 +351,15 @@ const Navigation = () => {
                     "flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors",
                     isActive(item.path) 
                       ? "bg-primary/10 text-primary" 
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-gray-600 hover:text-gray-900"
                   )}>
                     <Icon className={cn(
                       "w-5 h-5",
-                      isActive(item.path) && "text-primary"
+                      isActive(item.path) ? "text-primary" : "text-gray-600"
                     )} />
                     <span className={cn(
                       "text-xs font-medium",
-                      isActive(item.path) && "text-primary"
+                      isActive(item.path) ? "text-primary" : "text-gray-600"
                     )}>
                       {item.label}
                     </span>
@@ -373,7 +373,7 @@ const Navigation = () => {
               <Link to="/new-prayer">
                 <div className="flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors">
                   <div className="w-10 h-10 bg-gradient-divine rounded-full flex items-center justify-center shadow-glow">
-                    <Plus className="w-5 h-5 text-primary-foreground" />
+                    <Plus className="w-5 h-5 text-white" />
                   </div>
                   <span className="text-xs font-medium text-primary">ใหม่</span>
                 </div>
