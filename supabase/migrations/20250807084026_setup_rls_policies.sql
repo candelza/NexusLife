@@ -61,3 +61,69 @@ CREATE POLICY "Admins can manage daily bible verses" ON public.daily_bible_verse
       AND member_level IN ('admin', 'moderator')
     )
   );
+
+-- Add admin policies for care groups management
+-- This allows admin users to edit and delete care groups
+
+-- Admin can update any care group
+CREATE POLICY "Admins can update any care group" ON public.care_groups 
+FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles 
+    WHERE user_id = auth.uid() AND role = 'admin'
+  )
+);
+
+-- Admin can delete any care group
+CREATE POLICY "Admins can delete any care group" ON public.care_groups 
+FOR DELETE USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles 
+    WHERE user_id = auth.uid() AND role = 'admin'
+  )
+);
+
+-- Admin can manage any group members
+CREATE POLICY "Admins can manage any group members" ON public.group_members 
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles 
+    WHERE user_id = auth.uid() AND role = 'admin'
+  )
+);
+
+-- Admin can manage any prayers
+CREATE POLICY "Admins can manage any prayers" ON public.prayers 
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles 
+    WHERE user_id = auth.uid() AND role = 'admin'
+  )
+);
+
+-- Admin can manage any prayer responses
+CREATE POLICY "Admins can manage any prayer responses" ON public.prayer_responses 
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles 
+    WHERE user_id = auth.uid() AND role = 'admin'
+  )
+);
+
+-- Admin can manage any events
+CREATE POLICY "Admins can manage any events" ON public.events 
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles 
+    WHERE user_id = auth.uid() AND role = 'admin'
+  )
+);
+
+-- Admin can manage any profiles
+CREATE POLICY "Admins can manage any profiles" ON public.profiles 
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles 
+    WHERE user_id = auth.uid() AND role = 'admin'
+  )
+);

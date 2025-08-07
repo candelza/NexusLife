@@ -698,8 +698,11 @@ const AdminSettings = () => {
   // Edit care group function
   const handleEditCareGroup = async (groupId: string, updatedData: any) => {
     try {
+      console.log('Debug - handleEditCareGroup called with:', { groupId, updatedData });
+      
       // Validate required fields
       if (!updatedData.name) {
+        console.log('Debug - Validation failed: missing name');
         toast({
           title: "ข้อมูลไม่ครบถ้วน",
           description: "กรุณากรอกชื่อกลุ่มดูแล",
@@ -708,6 +711,7 @@ const AdminSettings = () => {
         return;
       }
 
+      console.log('Debug - Updating care group in database...');
       const { error } = await supabase
         .from('care_groups')
         .update({
@@ -716,6 +720,7 @@ const AdminSettings = () => {
         })
         .eq('id', groupId);
 
+      console.log('Debug - Update result:', { error });
       if (error) throw error;
 
       toast({
@@ -770,20 +775,26 @@ const AdminSettings = () => {
   // Delete care group function
   const handleDeleteCareGroup = async (groupId: string) => {
     try {
+      console.log('Debug - handleDeleteCareGroup called with:', { groupId });
+      
       // First delete group members
+      console.log('Debug - Deleting group members...');
       const { error: membersError } = await supabase
         .from('group_members')
         .delete()
         .eq('group_id', groupId);
 
+      console.log('Debug - Delete members result:', { membersError });
       if (membersError) throw membersError;
 
       // Then delete the care group
+      console.log('Debug - Deleting care group...');
       const { error } = await supabase
         .from('care_groups')
         .delete()
         .eq('id', groupId);
 
+      console.log('Debug - Delete care group result:', { error });
       if (error) throw error;
 
       toast({
