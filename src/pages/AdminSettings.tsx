@@ -141,6 +141,25 @@ const AdminSettings = () => {
   
   const { toast } = useToast();
 
+  // Helper functions for member level
+  const getMemberLevelLabel = (level: string) => {
+    switch (level) {
+      case 'admin': return 'ผู้ดูแลระบบ';
+      case 'moderator': return 'ผู้ดูแล';
+      case 'member': return 'สมาชิก';
+      default: return 'สมาชิก';
+    }
+  };
+
+  const getMemberLevelVariant = (level: string) => {
+    switch (level) {
+      case 'admin': return 'destructive';
+      case 'moderator': return 'default';
+      case 'member': return 'secondary';
+      default: return 'secondary';
+    }
+  };
+
   // Add activity to log
   const addActivityLog = (action: string, details: string, type: 'success' | 'error' | 'info' = 'info') => {
     const newActivity = {
@@ -566,8 +585,11 @@ const AdminSettings = () => {
   // Edit member function
   const handleEditMember = async (memberId: string, updatedData: any) => {
     try {
+      console.log('Debug - handleEditMember called with:', { memberId, updatedData });
+      
       // Validate required fields
       if (!updatedData.display_name && !updatedData.first_name && !updatedData.last_name) {
+        console.log('Debug - Validation failed: missing name fields');
         toast({
           title: "ข้อมูลไม่ครบถ้วน",
           description: "กรุณากรอกชื่อหรือชื่อที่แสดงอย่างน้อยหนึ่งรายการ",
@@ -576,6 +598,7 @@ const AdminSettings = () => {
         return;
       }
 
+      console.log('Debug - Updating member in database...');
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -586,6 +609,7 @@ const AdminSettings = () => {
         })
         .eq('id', memberId);
 
+      console.log('Debug - Update result:', { error });
       if (error) throw error;
 
       toast({
@@ -1067,17 +1091,22 @@ const AdminSettings = () => {
                           <div className="font-medium">
                             {member.profile?.display_name || 
                              `${member.profile?.first_name || ''} ${member.profile?.last_name || ''}`.trim() ||
-                             'ไม่ระบุชื่อ'}
+                             member.email || 'ไม่ระบุชื่อ'}
                           </div>
                           <div className="text-sm text-muted-foreground">{member.email}</div>
-                          <div className="text-xs text-muted-foreground">
-                            เข้าร่วมเมื่อ {new Date(member.created_at).toLocaleDateString('th-TH')}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>เข้าร่วมเมื่อ {new Date(member.created_at).toLocaleDateString('th-TH')}</span>
+                            <span>•</span>
+                            <span>ระดับ: {getMemberLevelLabel(member.profile?.member_level || 'member')}</span>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="capitalize">
-                          {member.profile?.member_level || 'member'}
+                        <Badge 
+                          variant={getMemberLevelVariant(member.profile?.member_level || 'member')} 
+                          className="capitalize"
+                        >
+                          {getMemberLevelLabel(member.profile?.member_level || 'member')}
                         </Badge>
                         {member.group_members && member.group_members.length > 0 && (
                           <Badge variant="secondary">
@@ -1167,7 +1196,7 @@ const AdminSettings = () => {
                       <div className="flex-1">
                         <div className="font-medium mb-1">{prayer.title}</div>
                         <div className="text-sm text-muted-foreground mb-2">
-                          โดย {prayer.profile?.display_name || 'ไม่ระบุชื่อ'}
+                                                        โดย {prayer.profile?.display_name || prayer.user_id || 'ไม่ระบุชื่อ'}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {new Date(prayer.created_at).toLocaleDateString('th-TH')}
@@ -1487,14 +1516,14 @@ const AdminSettings = () => {
                                   <SelectValue placeholder="เลือกสมาชิกที่ต้องการเปลี่ยนบทบาท" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {console.log('Debug - Rendering members:', members)}
-                                  {members.map((member) => (
-                                    <SelectItem key={member.id} value={member.id}>
-                                      {member.display_name || 
-                                       `${member.first_name || ''} ${member.last_name || ''}`.trim() ||
-                                       'ไม่ระบุชื่อ'} (ID: {member.id})
-                                    </SelectItem>
-                                  ))}
+                                                              {console.log('Debug - Rendering members:', members)}
+                            {members.map((member) => (
+                              <SelectItem key={member.id} value={member.id}>
+                                {member.display_name || 
+                                 `${member.first_name || ''} ${member.last_name || ''}`.trim() ||
+                                 member.email || 'ไม่ระบุชื่อ'} (ID: {member.id})
+                              </SelectItem>
+                            ))}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -1543,16 +1572,21 @@ const AdminSettings = () => {
                               <div className="font-medium">
                                 {userRole.profile?.display_name || 
                                  `${userRole.profile?.first_name || ''} ${userRole.profile?.last_name || ''}`.trim() ||
-                                 'ไม่ระบุชื่อ'}
+                                 userRole.user_id || 'ไม่ระบุชื่อ'}
                               </div>
                               <div className="text-sm text-muted-foreground">User ID: {userRole.user_id}</div>
-                              <div className="text-xs text-muted-foreground">
-                                กำหนดเมื่อ {new Date(userRole.assigned_at).toLocaleDateString('th-TH')}
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>กำหนดเมื่อ {new Date(userRole.assigned_at).toLocaleDateString('th-TH')}</span>
+                                <span>•</span>
+                                <span>ระดับ: {getMemberLevelLabel(userRole.role)}</span>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="capitalize">
-                                {userRole.role}
+                              <Badge 
+                                variant={getMemberLevelVariant(userRole.role)} 
+                                className="capitalize"
+                              >
+                                {getMemberLevelLabel(userRole.role)}
                               </Badge>
                               <Select 
                                 value={userRole.role}
