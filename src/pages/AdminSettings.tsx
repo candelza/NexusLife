@@ -67,6 +67,8 @@ interface BibleVerse {
   reading_day: number;
   explanation: string | null;
   explanation_thai: string | null;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
   created_at: string;
 }
 
@@ -114,7 +116,9 @@ const AdminSettings = () => {
     verse_end: null, 
     reading_day: 1,
     explanation: '',
-    explanation_thai: ''
+    explanation_thai: '',
+    scheduled_date: '',
+    scheduled_time: ''
   });
   const [newCareGroup, setNewCareGroup] = useState({ name: '', description: '' });
   const [selectedMemberLevel, setSelectedMemberLevel] = useState('');
@@ -472,7 +476,9 @@ const AdminSettings = () => {
           verse_end: newBibleVerse.verse_end,
           reading_day: newBibleVerse.reading_day,
           explanation: newBibleVerse.explanation || null,
-          explanation_thai: newBibleVerse.explanation_thai || null
+          explanation_thai: newBibleVerse.explanation_thai || null,
+          scheduled_date: newBibleVerse.scheduled_date || null,
+          scheduled_time: newBibleVerse.scheduled_time || null
         });
 
       if (error) throw error;
@@ -497,7 +503,9 @@ const AdminSettings = () => {
         verse_end: null, 
         reading_day: 1,
         explanation: '',
-        explanation_thai: ''
+        explanation_thai: '',
+        scheduled_date: '',
+        scheduled_time: ''
       });
       fetchBibleVerses();
     } catch (error: any) {
@@ -696,7 +704,9 @@ const AdminSettings = () => {
           verse_end: updatedData.verse_end,
           reading_day: updatedData.reading_day,
           explanation: updatedData.explanation || null,
-          explanation_thai: updatedData.explanation_thai || null
+          explanation_thai: updatedData.explanation_thai || null,
+          scheduled_date: updatedData.scheduled_date || null,
+          scheduled_time: updatedData.scheduled_time || null
         })
         .eq('id', verseId);
 
@@ -801,6 +811,23 @@ const AdminSettings = () => {
     try {
       console.log('Debug - handleDeleteCareGroup called with:', { groupId });
       
+      // Check if user is admin
+      if (!user) {
+        toast({
+          title: "ไม่มีสิทธิ์",
+          description: "คุณต้องเข้าสู่ระบบก่อน",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Show confirmation dialog
+      const confirmed = window.confirm('คุณแน่ใจหรือไม่ที่จะลบกลุ่มดูแลนี้? การดำเนินการนี้ไม่สามารถยกเลิกได้');
+      if (!confirmed) {
+        console.log('Debug - User cancelled deletion');
+        return;
+      }
+      
       // First delete group members
       console.log('Debug - Deleting group members...');
       const { error: membersError } = await supabase
@@ -809,7 +836,10 @@ const AdminSettings = () => {
         .eq('group_id', groupId);
 
       console.log('Debug - Delete members result:', { membersError });
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error('Error deleting group members:', membersError);
+        // Continue even if members deletion fails
+      }
 
       // Then delete the care group
       console.log('Debug - Deleting care group...');
@@ -819,19 +849,29 @@ const AdminSettings = () => {
         .eq('id', groupId);
 
       console.log('Debug - Delete care group result:', { error });
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting care group:', error);
+        throw error;
+      }
 
       toast({
         title: "ลบกลุ่มดูแลสำเร็จ",
         description: "กลุ่มดูแลได้ถูกลบออกจากระบบแล้ว",
       });
+      
+      addActivityLog(
+        "ลบกลุ่มดูแล", 
+        `ลบกลุ่มดูแล ID: ${groupId}`, 
+        'success'
+      );
 
-      fetchCareGroups();
+      // Refresh the care groups list
+      await fetchCareGroups();
     } catch (error: any) {
       console.error('Error deleting care group:', error);
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถลบกลุ่มดูแลได้",
+        description: `ไม่สามารถลบกลุ่มดูแลได้: ${error.message}`,
         variant: "destructive"
       });
     }
@@ -1336,13 +1376,31 @@ const AdminSettings = () => {
                           placeholder="ใส่เนื้อหาพระคัมภีร์ภาษาไทย..."
                         />
                       </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>วันอ่าน</Label>
+                          <Input 
+                            type="number"
+                            value={newBibleVerse.reading_day}
+                            onChange={(e) => setNewBibleVerse({...newBibleVerse, reading_day: parseInt(e.target.value)})}
+                            placeholder="1"
+                          />
+                        </div>
+                        <div>
+                          <Label>วันที่ล่วงหน้า (ถ้ามี)</Label>
+                          <Input 
+                            type="date"
+                            value={newBibleVerse.scheduled_date}
+                            onChange={(e) => setNewBibleVerse({...newBibleVerse, scheduled_date: e.target.value})}
+                          />
+                        </div>
+                      </div>
                       <div>
-                        <Label>วันอ่าน</Label>
+                        <Label>เวลาล่วงหน้า (ถ้ามี)</Label>
                         <Input 
-                          type="number"
-                          value={newBibleVerse.reading_day}
-                          onChange={(e) => setNewBibleVerse({...newBibleVerse, reading_day: parseInt(e.target.value)})}
-                          placeholder="1"
+                          type="time"
+                          value={newBibleVerse.scheduled_time}
+                          onChange={(e) => setNewBibleVerse({...newBibleVerse, scheduled_time: e.target.value})}
                         />
                       </div>
                       <div>
@@ -1377,6 +1435,12 @@ const AdminSettings = () => {
                             )}
                             <div className="text-xs text-muted-foreground">
                               วันอ่าน: {verse.reading_day}
+                              {verse.scheduled_date && (
+                                <span className="ml-2">• วันที่ล่วงหน้า: {new Date(verse.scheduled_date).toLocaleDateString('th-TH')}</span>
+                              )}
+                              {verse.scheduled_time && (
+                                <span className="ml-2">• เวลา: {verse.scheduled_time}</span>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1877,14 +1941,38 @@ const AdminSettings = () => {
                     })}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>วันอ่าน</Label>
+                    <Input 
+                      type="number"
+                      defaultValue={editingBibleVerse.reading_day}
+                      onChange={(e) => setEditingBibleVerse({
+                        ...editingBibleVerse,
+                        reading_day: parseInt(e.target.value)
+                      })}
+                    />
+                  </div>
+                  <div>
+                    <Label>วันที่ล่วงหน้า (ถ้ามี)</Label>
+                    <Input 
+                      type="date"
+                      defaultValue={editingBibleVerse.scheduled_date || ''}
+                      onChange={(e) => setEditingBibleVerse({
+                        ...editingBibleVerse,
+                        scheduled_date: e.target.value
+                      })}
+                    />
+                  </div>
+                </div>
                 <div>
-                  <Label>วันอ่าน</Label>
+                  <Label>เวลาล่วงหน้า (ถ้ามี)</Label>
                   <Input 
-                    type="number"
-                    defaultValue={editingBibleVerse.reading_day}
+                    type="time"
+                    defaultValue={editingBibleVerse.scheduled_time || ''}
                     onChange={(e) => setEditingBibleVerse({
                       ...editingBibleVerse,
-                      reading_day: parseInt(e.target.value)
+                      scheduled_time: e.target.value
                     })}
                   />
                 </div>

@@ -132,6 +132,17 @@ const Dashboard = () => {
     }
   }, [user]);
 
+  // Refresh prayers every 30 seconds
+  useEffect(() => {
+    if (!user) return;
+    
+    const interval = setInterval(() => {
+      fetchPrayers();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [user]);
+
   const handlePrayerUpdate = () => {
     fetchPrayers();
   };

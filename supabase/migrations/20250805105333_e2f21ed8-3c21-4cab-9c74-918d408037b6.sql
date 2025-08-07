@@ -5,6 +5,7 @@ CREATE TABLE public.profiles (
   last_name TEXT,
   display_name TEXT,
   avatar_url TEXT,
+  member_level TEXT DEFAULT 'member' CHECK (member_level IN ('admin', 'moderator', 'member')),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   PRIMARY KEY (id)
@@ -127,10 +128,32 @@ CREATE POLICY "Users can view all profiles" ON public.profiles FOR SELECT USING 
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
+-- Admin policies for profiles
+CREATE POLICY "Admin can manage profiles" ON public.profiles FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND member_level = 'admin'
+  )
+);
+
 -- Care groups policies
 CREATE POLICY "Anyone can view care groups" ON public.care_groups FOR SELECT USING (true);
 CREATE POLICY "Group leaders can update their groups" ON public.care_groups FOR UPDATE USING (leader_id = auth.uid());
 CREATE POLICY "Authenticated users can create groups" ON public.care_groups FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+-- Admin policies for care groups
+CREATE POLICY "Admin can update care groups" ON public.care_groups FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND member_level = 'admin'
+  )
+);
+CREATE POLICY "Admin can delete care groups" ON public.care_groups FOR DELETE USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND member_level = 'admin'
+  )
+);
 
 -- Group members policies
 CREATE POLICY "Users can view group memberships" ON public.group_members FOR SELECT USING (true);
@@ -140,6 +163,14 @@ CREATE POLICY "Group leaders can manage members" ON public.group_members FOR ALL
   EXISTS (
     SELECT 1 FROM public.care_groups 
     WHERE id = group_id AND leader_id = auth.uid()
+  )
+);
+
+-- Admin policies for group members
+CREATE POLICY "Admin can manage group members" ON public.group_members FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND member_level = 'admin'
   )
 );
 
@@ -155,6 +186,14 @@ CREATE POLICY "Users can view non-private prayers" ON public.prayers FOR SELECT 
 CREATE POLICY "Users can create prayers" ON public.prayers FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update their own prayers" ON public.prayers FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own prayers" ON public.prayers FOR DELETE USING (auth.uid() = user_id);
+
+-- Admin policies for prayers
+CREATE POLICY "Admin can manage prayers" ON public.prayers FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND member_level = 'admin'
+  )
+);
 
 -- Prayer responses policies
 CREATE POLICY "Users can view prayer responses for visible prayers" ON public.prayer_responses FOR SELECT USING (
@@ -174,6 +213,14 @@ CREATE POLICY "Users can create prayer responses" ON public.prayer_responses FOR
 CREATE POLICY "Users can update their own responses" ON public.prayer_responses FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete their own responses" ON public.prayer_responses FOR DELETE USING (auth.uid() = user_id);
 
+-- Admin policies for prayer responses
+CREATE POLICY "Admin can manage prayer responses" ON public.prayer_responses FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND member_level = 'admin'
+  )
+);
+
 -- Events policies
 CREATE POLICY "Users can view public events or group events they're in" ON public.events FOR SELECT USING (
   is_public OR 
@@ -186,6 +233,14 @@ CREATE POLICY "Users can view public events or group events they're in" ON publi
 CREATE POLICY "Authenticated users can create events" ON public.events FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Event organizers can update their events" ON public.events FOR UPDATE USING (auth.uid() = organizer_id);
 CREATE POLICY "Event organizers can delete their events" ON public.events FOR DELETE USING (auth.uid() = organizer_id);
+
+-- Admin policies for events
+CREATE POLICY "Admin can manage events" ON public.events FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND member_level = 'admin'
+  )
+);
 
 -- Insert sample data
 INSERT INTO public.care_groups (name, description) VALUES
