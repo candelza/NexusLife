@@ -189,9 +189,20 @@ const NewPrayer = () => {
       navigate("/");
     } catch (error: any) {
       console.error('Error submitting prayer:', error);
+      
+      let errorMessage = "ไม่สามารถส่งคำอธิษฐานได้ กรุณาลองใหม่อีกครั้ง";
+      
+      if (error.code === '23505') {
+        errorMessage = "คำอธิษฐานนี้มีอยู่แล้ว กรุณาลองใหม่อีกครั้ง";
+      } else if (error.code === '23503') {
+        errorMessage = "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อมูลอีกครั้ง";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: error.message || "ไม่สามารถส่งคำอธิษฐานได้ กรุณาลองใหม่อีกครั้ง",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
