@@ -30,7 +30,8 @@ import {
   UserCheck,
   Settings,
   Save,
-  X
+  X,
+  UserPlus
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
@@ -395,6 +396,16 @@ const AdminSettings = () => {
 
   const handleAddBibleVerse = async () => {
     try {
+      // Validate required fields
+      if (!newBibleVerse.book || !newBibleVerse.content) {
+        toast({
+          title: "ข้อมูลไม่ครบถ้วน",
+          description: "กรุณากรอกหนังสือและเนื้อหาพระคัมภีร์",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('bible_verses')
         .insert({
@@ -440,11 +451,21 @@ const AdminSettings = () => {
 
   const handleAddCareGroup = async () => {
     try {
+      // Validate required fields
+      if (!newCareGroup.name) {
+        toast({
+          title: "ข้อมูลไม่ครบถ้วน",
+          description: "กรุณากรอกชื่อกลุ่มดูแล",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('care_groups')
         .insert({
           name: newCareGroup.name,
-          description: newCareGroup.description
+          description: newCareGroup.description || null
         });
 
       if (error) throw error;
@@ -471,7 +492,7 @@ const AdminSettings = () => {
       const { error } = await supabase
         .from('group_members')
         .insert({
-          member_id: memberId,
+          user_id: memberId,
           group_id: groupId,
           role: 'member'
         });
@@ -497,13 +518,23 @@ const AdminSettings = () => {
   // Edit member function
   const handleEditMember = async (memberId: string, updatedData: any) => {
     try {
+      // Validate required fields
+      if (!updatedData.display_name && !updatedData.first_name && !updatedData.last_name) {
+        toast({
+          title: "ข้อมูลไม่ครบถ้วน",
+          description: "กรุณากรอกชื่อหรือชื่อที่แสดงอย่างน้อยหนึ่งรายการ",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
-          display_name: updatedData.display_name,
-          first_name: updatedData.first_name,
-          last_name: updatedData.last_name,
-          member_level: updatedData.member_level
+          display_name: updatedData.display_name || null,
+          first_name: updatedData.first_name || null,
+          last_name: updatedData.last_name || null,
+          member_level: updatedData.member_level || null
         })
         .eq('id', memberId);
 
@@ -529,12 +560,22 @@ const AdminSettings = () => {
   // Edit prayer function
   const handleEditPrayer = async (prayerId: string, updatedData: any) => {
     try {
+      // Validate required fields
+      if (!updatedData.title || !updatedData.description) {
+        toast({
+          title: "ข้อมูลไม่ครบถ้วน",
+          description: "กรุณากรอกหัวข้อและรายละเอียดคำอธิษฐาน",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('prayers')
         .update({
           title: updatedData.title,
           description: updatedData.description,
-          status: updatedData.status
+          status: updatedData.status || 'pending'
         })
         .eq('id', prayerId);
 
@@ -597,11 +638,21 @@ const AdminSettings = () => {
   // Edit care group function
   const handleEditCareGroup = async (groupId: string, updatedData: any) => {
     try {
+      // Validate required fields
+      if (!updatedData.name) {
+        toast({
+          title: "ข้อมูลไม่ครบถ้วน",
+          description: "กรุณากรอกชื่อกลุ่มดูแล",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('care_groups')
         .update({
           name: updatedData.name,
-          description: updatedData.description
+          description: updatedData.description || null
         })
         .eq('id', groupId);
 
@@ -688,6 +739,16 @@ const AdminSettings = () => {
   // Add user role function
   const handleAddUserRole = async (userId: string, role: 'admin' | 'moderator' | 'member') => {
     try {
+      // Validate required fields
+      if (!userId || !role) {
+        toast({
+          title: "ข้อมูลไม่ครบถ้วน",
+          description: "กรุณาเลือกผู้ใช้และบทบาท",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('user_roles')
         .insert({
@@ -1282,7 +1343,56 @@ const AdminSettings = () => {
                   </div>
                   
                   <div className="space-y-4">
-                    <h3 className="font-medium">รายชื่อผู้ใช้ที่มีบทบาท</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium">รายชื่อผู้ใช้ที่มีบทบาท</h3>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button size="sm">
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            เพิ่มบทบาท
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>เพิ่มบทบาทใหม่</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <Label>User ID</Label>
+                              <Input 
+                                placeholder="ใส่ User ID ที่ต้องการเพิ่มบทบาท"
+                                id="new-user-id"
+                              />
+                            </div>
+                            <div>
+                              <Label>บทบาท</Label>
+                              <Select id="new-role">
+                                <SelectTrigger>
+                                  <SelectValue placeholder="เลือกบทบาท" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="member">สมาชิก</SelectItem>
+                                  <SelectItem value="moderator">ผู้ดูแล</SelectItem>
+                                  <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline">ยกเลิก</Button>
+                              <Button onClick={() => {
+                                const userId = (document.getElementById('new-user-id') as HTMLInputElement)?.value;
+                                const role = (document.getElementById('new-role') as HTMLSelectElement)?.value as 'admin' | 'moderator' | 'member';
+                                if (userId && role) {
+                                  handleAddUserRole(userId, role);
+                                }
+                              }}>
+                                เพิ่มบทบาท
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                     <div className="space-y-2">
                       {userRoles.map((userRole) => (
                         <div key={userRole.id} className="p-3 border rounded-lg">
